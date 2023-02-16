@@ -1,52 +1,50 @@
-# Parameters and Descriptions
-# L
-# side length of forest
+'''
+This module gives the code to simulate a forest fire [add description]
+Written by J Kahn and Helen Miller 
 
-# t_steps
-# Number of “years” (alternations between growth and fire season) to run simulation for
-# d
-# Radius of neighborhood during growth season 
-# m
-# Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
-# p_i_gmax
-# Maximum probability of spontaneous grass ignition (when moisture=0) (p_i_tmax < p_i_gmax)
-# p_i_tmax
-# Maximum probability of spontaneous tree ignition (when moisture=0) (p_i_tmax < p_i_gmax)
-# r_t_spread_max
-# Max rate at which fire spreads from a tree (r_g_spread_max < r_t_spread_max) 
-# r_g_spread_max
-# Max rate at which fire spreads from grass to neighbors (r_g_spread_max < r_t_spread_max
-# r_t_catch_max
-# Max rate at which trees catch fire from nearby source (r_t_catch_max < r_g_catch_max)
-# r_g_catch_max
-# Max rate at which grass catches fire from nearby source (r_t_catch_max < r_g_catch_max)
-# init_tree
-# Initial proportion of tree cover (0 to 1; init_tree + init_grass <= 1) 
-# init_grass
-# Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
+Model Parameters:  
+    L : (int) side length of forest
+    t_steps : (int) Number of “years” (alternations between growth and fire season) to run simulation for
+    d : (int) Radius of neighborhood during growth season 
+    m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
+    p_i_gmax : (float) Maximum probability of spontaneous grass ignition (when moisture=0) (p_i_tmax < p_i_gmax)
+    p_i_tmax : (float) Maximum probability of spontaneous tree ignition (when moisture=0) (p_i_tmax < p_i_gmax)
+    r_t_spread_max : (float) Max rate at which fire spreads from a tree (r_g_spread_max < r_t_spread_max) 
+    r_g_spread_max : (float) Max rate at which fire spreads from grass to neighbors (r_g_spread_max < r_t_spread_max
+    r_t_catch_max : (float) Max rate at which trees catch fire from nearby source (r_t_catch_max < r_g_catch_max)
+    r_g_catch_max : (float) Max rate at which grass catches fire from nearby source (r_t_catch_max < r_g_catch_max)
+    init_tree : (float) Initial proportion of tree cover (0 to 1; init_tree + init_grass <= 1) 
+    init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
+'''
 
-def set_probabilities(m):
+def set_probabilities(m): #TODO: J
     ''' set_probilities creates a dictionary of growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters and moisture levels'''
     # Growth rates vary proportionately with moisture level  
-    # Set P_ag (probability that grass propagates to neighboring ash site) equal to m 
-    # Set P_gt (probability that tree propagates to neighboring grass site) equal to m
+        # Set P_ag (probability that grass propagates to neighboring ash site) equal to m 
+        # Set P_gt (probability that tree propagates to neighboring grass site) equal to m
     # Ignition probabilities vary inversely with moisture level 
-    # Set p_i_t (prob of tree ignition) = p_i_tmax*(1 - m) 
-    # Set p_i_g (prob of grass ignition) = p_i_gmax*(1 - m)
+        # Set p_i_t (prob of tree ignition) = p_i_tmax*(1 - m) 
+        # Set p_i_g (prob of grass ignition) = p_i_gmax*(1 - m)
     # Fire spread between neighbors depends on moisture and state each cell 
-    # Set rate of spread/catch for each cell type equal to (max rate)*(1-m)
-    # Multiply (rate of spread) times (rate of catching) for each combination of (grass, tree) to get probabilities of fire spreading between trees and grass 
+        # Set rate of spread/catch for each cell type equal to (max rate)*(1-m)
+        # Multiply (rate of spread) times (rate of catching) for each combination of (grass, tree) to get probabilities of fire spreading between trees and grass 
     # Returns an dict of all the transition probabilities
-    pass
+    p_ag = m
+    p_gt = m
 
-def initialize_forest(L, d, init_grass, init_tree): 
+
+
+
+    return {"p_ag": p_ag, "p_gt": p_gt}
+
+def initialize_forest(L, d, init_grass, init_tree): #TODO: H
     ''' initialize_forest creates the world for the simulation (stored in a 2D array) and populates it with a randomly dispersed initial set of trees and grass'''
     # create (L+2d)x(L+2d) array(forest)
     # Randomly populate the LxL center with trees and grass based on initial conditions
     # Set boundary region (2d length around edge) to be all ash 
     pass 
 
-def run_simulation(parameters): 
+def run_simulation(parameters): #TODO: J
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons'''
     # Initialize the forest 
     # Set all the probabilities based on moisture levels 
@@ -57,7 +55,7 @@ def run_simulation(parameters):
     pass 
 
 
-def grow_season(world, params):
+def grow_season(world, params): #TODO: J 
     '''grow_season runs one iteration of the world in which new vegetation grows'''
     # Iterate across the forest grid 
     # For each cell: 
@@ -71,7 +69,7 @@ def grow_season(world, params):
     pass
 
 
-def fire_season(world, params): 
+def fire_season(world, params): #TODO: H
     '''fire_season runs one iteration of the world, in which wildfires initiate, propagate, and die out'''
     # Create two lists: 
     # Fire_location = list of locations of currently on-fire cells in grid
