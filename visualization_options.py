@@ -1,4 +1,4 @@
-def plot_slices_of_simulation(slices, times, neighborhood_size):
+def plot_slices_of_simulation(slices, times):
     '''Params: 
         save_times: a list or np array of time steps 
         slices: an array with shape (save_times, L, L), where L is the side length of a 2-D world. Each subarray contains the state of the world at a time in save_times
