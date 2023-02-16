@@ -17,6 +17,8 @@ Model Parameters:
     init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
 '''
 
+import numpy as np
+
 def set_probabilities(m): #TODO: J
     ''' set_probilities creates a dictionary of growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters and moisture levels'''
     # Growth rates vary proportionately with moisture level  
@@ -37,12 +39,23 @@ def set_probabilities(m): #TODO: J
 
     return {"p_ag": p_ag, "p_gt": p_gt}
 
-def initialize_forest(L, d, init_grass, init_tree): #TODO: H
-    ''' initialize_forest creates the world for the simulation (stored in a 2D array) and populates it with a randomly dispersed initial set of trees and grass'''
+def initialize_forest(L, d, init_grass, init_tree): 
+    ''' initialize_forest creates the world for the simulation (stored in a 2D array) and populates it with a randomly dispersed initial set of trees and grass. 
+    Ash, grass and trees are represented by ints: 0=ash; 1=grass; 2=tree.'''
     # create (L+2d)x(L+2d) array(forest)
-    # Randomly populate the LxL center with trees and grass based on initial conditions
+    # Randomly populate forest with trees and grass based on initial conditions
+    forest = np.random.choice([0,1,2],
+                              size=(L+2*d,L+2*d), 
+                              p=[1-(init_tree+init_grass), init_grass, init_tree])
+    # 0=ash; 1=grass; 2=tree
     # Set boundary region (2d length around edge) to be all ash 
-    pass 
+    forest[:, 0:d] = 0
+    forest[:, (L+d):] = 0
+    forest[0:d, :] = 0
+    forest[(L+d):, :] = 0
+    
+    return forest
+
 
 def run_simulation(parameters): #TODO: J
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons'''
