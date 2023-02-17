@@ -83,10 +83,8 @@ def grow_season(world, probs_dict): #TODO: J
 
 def fire_season(forest, L, probs_dict): 
     '''fire_season runs one iteration of the world, in which wildfires initiate, propagate, and die out'''
-    # TODO: Make sure there is no bias in the order we iterate through fire cells because
-    # we are not descretizing time steps. 
-    # TODO: Update with probs_dict
-
+    # TODO: add some checks/tests so function throws useful errors if something goes wrong
+    
     # -----INITIALIZE----- #
     # get length of non-forest border
     d=int((forest.shape[0] - L)/2)
@@ -96,13 +94,26 @@ def fire_season(forest, L, probs_dict):
     # Fire_type = 1 or 2 depending on whether each cell is tree or grass fire (aligned with Fire_location list) 
     fire_type=[]
 
+    def ignite(location, type): 
+        """Helper function which does all the steps needed when a new cell ignites"""
+        # Add to fire_location 
+        fire_location.append(location)
+        # Add to fire_type
+        fire_type.append(type)
+        # set location to ash. 
+        # technically it's not ash yet, but since we are keeping 
+        # track of fire type and location in the other lists we 
+        # don't need to in the world. We need to set it to ash 
+        # so it doesn't ignite again (ie get doubles in fire_location/fire_type)
+        forest[location] = 0
+
     # -----FIRE SEASON STARTS----- #
     ### IGNITION
     # Randomly select some of the vegetation cells to ignite and add to the lists 
     ignition_probs = np.random.rand(L*L)
     ignition_probs.resize(L,L)
-    grass_ignitions = (ignition_probs < probs_dict["p_i_g"]) & (forest[d:L+d, d:L+d] == 1)
-    tree_ignitions = (ignition_probs < probs_dict["p_i_t"]) & (forest[d:L+d, d:L+d] == 2)
+    grass_ignitions = (ignition_probs < probs_dict["p_ig_g"]) & (forest[d:L+d, d:L+d] == 1)
+    tree_ignitions = (ignition_probs < probs_dict["p_ig_t"]) & (forest[d:L+d, d:L+d] == 2)
     
     if (len(grass_ignitions)+len(tree_ignitions) == 0): 
         return forest
@@ -112,13 +123,13 @@ def fire_season(forest, L, probs_dict):
     grass_fire_locations = np.where(grass_ignitions) 
     for i, grass_x in enumerate(grass_fire_locations[0]): 
         # Need to add d back in
-        fire_location.append((grass_x + d, grass_fire_locations[1][i] + d))
-        fire_type.append(1)
+        location = (grass_x + d, grass_fire_locations[1][i] + d)
+        ignite(location=location, type=1)
     # Add tree to fire_location list
     tree_fire_locations = np.where(tree_ignitions)
     for i, tree_x in enumerate(tree_fire_locations[0]): 
-        fire_location.append((tree_x + d, tree_fire_locations[1][i] + d))
-        fire_type.append(2)
+        location = (tree_x + d, tree_fire_locations[1][i] + d)
+        ignite(location=location, type=2)
 
     ### FIRE SPREADS UNTIL IT IS ALL BURNED OUT
     # While there are still cells on fire:
@@ -127,14 +138,11 @@ def fire_season(forest, L, probs_dict):
         # Take the first element in fire_location: 	
         location = fire_location.pop(0)
         type = fire_type.pop(0)
-        # set it to ash
-        forest[location] = 0
 
         # Get its neighbors (3x3 moore neighborhood)
         neighbors = forest[location[0]-1:location[0]+2, location[1]-1:location[1]+2]
-        # Randomly select which of its neighbors get set on fire (probabilities depend on moisture and focal/neighbor state)
         
-
+        # Randomly select which of its neighbors get set on fire (probabilities depend on moisture and focal/neighbor state)
         # get non-ash neighbors
         foliage_indices = np.nonzero(neighbors)
         foliage_neighbors = neighbors[foliage_indices]
@@ -162,11 +170,7 @@ def fire_season(forest, L, probs_dict):
                         nx = foliage_indices[0][i]
                         ny = foliage_indices[1][i]
                         new_location = (location[0] + (nx-1), location[1] + (ny-1))
-                        # Add to fire list
-                        fire_location.append(new_location)
-                        # add to type list
-                        fire_type.append(neighbor)
-                        # change to ash in world
+                        ignite(location=new_location, type=neighbor)
         
         # with p_spr_*: 
         if True: 
@@ -185,14 +189,12 @@ def fire_season(forest, L, probs_dict):
                             and (fire_probs[i] < probs_dict["p_spr_tt"]))
                     ): 
                     
-                    # Get index
+                    # ignite!
                     nx = foliage_indices[0][i]
                     ny = foliage_indices[1][i]
+                    # Use relative location to get location in forest
                     new_location = (location[0] + (nx-1), location[1] + (ny-1))
-                    # Add to fire list
-                    fire_location.append(new_location)
-                    # add to type list
-                    fire_type.append(neighbor)
+                    ignite(location=new_location, type=neighbor)
                       
 
 
@@ -223,7 +225,7 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
     output_slices = np.zeros((len(output_times), (L+2*d), (L+2*d)))
     for t in range(t_steps): 
         forest = grow_season(forest, probs_dict) #TODO: return data 
-        forest = fire_season(forest, probs_dict)
+        forest = fire_season(forest, L, probs_dict)
         if t in output_times: 
             output_slices[save_counter] = forest
             save_counter += 1
