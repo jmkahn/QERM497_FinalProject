@@ -4,6 +4,9 @@ Written by J Kahn and Helen Miller
 '''
 import numpy as np 
 
+ASH = 0 
+GRASS = 1
+TREE = 2
 
 def set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): #TODO: J
     '''
@@ -42,13 +45,6 @@ def set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tma
     # Returns an dict of all the transition probabilities
     return {"p_gro_ag": p_gro_ag, "p_gro_gt": p_gro_gt, "p_ig_g": p_ig_g, "p_ig_t": p_ig_t, "p_spr_gg": p_spr_gg, "p_spr_tg": p_spr_tg, "p_spr_gt": p_spr_gt, "p_spr_tt": p_spr_tt}
 
-    # %% 
-    # test set_probabilities function (w/out moisture dependence)
-    set_probabilities(0.5, 0.01, 0.002, 0.7, 0.5, 0.3, 0.7)
-    # return values should be 
-    # {"p_gro_ag": 0.5, "p_gro_gt": 0.5, "p_ig_g": 0.01, "p_ig_t": 0.002, "p_spr_gg": 0.35, "p_spr_tg": 0.49, "p_spr_gt": 0.15, "p_spr_tt": 0.21}
-
-
 def initialize_forest(L, d, init_grass, init_tree): 
     ''' initialize_forest creates the world for the simulation (stored in a 2D array) and populates it with a randomly dispersed initial set of trees and grass. 
     Ash, grass and trees are represented by ints: 0=ash; 1=grass; 2=tree.'''
@@ -66,20 +62,69 @@ def initialize_forest(L, d, init_grass, init_tree):
     
     return forest
 
+def get_neighbors(forest, location, r):
+    '''Retrieves the values of the neighbors of the cell at the given location 
+    in the forest
 
-def grow_season(world, probs_dict): #TODO: J 
+    Params: 
+        - forest: 2d array
+        - location: (row, col) tuple
+        - r : radius of neighborhood, r>=1 (for just the focal cell, r=1; for 3x3 Moore neighborhood, r=2)
+    Returns: 
+        - 2d array with dimensions (2r-1, 2r-1)
+    '''
+    low_bound = r-1 
+    up_bound = r
+    return forest[location[0]-low_bound:location[0]+up_bound, location[1]-low_bound:location[1]+up_bound]
+
+def try_propagate(neighbors, p_prop, current_val, new_val):
+    """
+    attempts to propagate vegetation from surrounding cells into the focal cell. returns 
+    the new state of the focal cell 
+    Args:
+        neighbors (nd_array): array giving all the neighbors of the focal cell 
+        p_prop (float): probability of new vegetation growing in the focal cell from 1 neighbor 
+        current_val (int): the current state of the focal cell 
+        new_val (int): the 'spreading' vegetation
+
+    Returns:
+        int: the value of the cell after the propagation attempt
+    
+    probability of new veg growing in this square is equal to the probability 
+    of at least 1 neighbor propagating to this square 
+    ie the complement of (NO neighbors propagating here)
+    """
+    num_surrounding_sources = np.count_nonzero(neighbors == new_val)
+    p_grow = 1 - (1-p_prop)**(num_surrounding_sources)
+    if rng.binomial(n=1, p=p_grow): # random trial to see if new plant grows
+        return new_val 
+    else: 
+        return current_val
+
+
+def grow_season(forest, params_dict):
     '''grow_season runs one iteration of the world in which new vegetation grows'''
-    # Iterate across the forest grid 
-    # For each cell: 
-    # Get neighborhood 
-    # Count number of each state in neighborhood
-    # Get its current state 
-    # If ash: roll to see if grows grass or stays ash
-    # If grass: roll to see if grows tree or stays grass 
-    # ^(these depend on number of neighbors in grass/tree state)
-    # Return world at next time step (and optional data) 
-    return world
+    # set up tools + get parameters 
+    rng = np.random.default_rng()
+    forest_iter = np.nditer(forest, flags=['multi_index'])
+    d = params_dict['d']
+    p_gro_ag = params_dict['p_gro_ag']
+    p_gro_gt = params_dict['p_gro_gt']
 
+    # Iterate across the forest grid 
+    for forest_cell in forest_iter: 
+        current_index = forest_iter.multi_index
+        neighbors = get_neighbors(forest, current_index, d) #get states of neighbors in (2d-1)x(2d-1) neighborhood
+       
+        # If ash: roll to see if grows grass or stays ash
+        if forest_cell == ASH: 
+          forest[current_index] = try_propagate(neighbors, ASH, GRASS)
+        # If grass: roll to see if grows tree or stays grass 
+        if forest_cell == GRASS: 
+            forest[current_index] = try_propagate(neighbors, GRASS, TREE) 
+    
+    # Return world at next time step #TODO: collect data 
+    return world
 
 def fire_season(forest, L, probs_dict): 
     '''fire_season runs one iteration of the world, in which wildfires initiate, propagate, and die out'''
@@ -219,20 +264,17 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
         init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
     '''
     forest = initialize_forest(L, d, init_grass, init_tree)
+    params_dict = {'m': m, 'L' : L, 'd' : d}
     probs_dict = set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax) # Set all the probabilities based on moisture levels 
+    params_dict.update(probs_dict) # pass all parameters around as 1 thing
 
     save_counter = 0 # save state data at select times 
     output_slices = np.zeros((len(output_times), (L+2*d), (L+2*d)))
     for t in range(t_steps): 
-        forest = grow_season(forest, probs_dict) #TODO: return data 
-        forest = fire_season(forest, L, probs_dict)
+        forest = grow_season(forest, params_dict) #TODO: return data 
+        forest = fire_season(forest, L, params_dict)
         if t in output_times: 
             output_slices[save_counter] = forest
             save_counter += 1
     return output_slices
 
-# %% 
-# test run_simulation 
-run_simulation(m=0.5, L=10, t_steps=5, d=5, init_grass=0.3, init_tree=0.4, p_ig_gmax=0.01, p_ig_tmax=0.002, r_spr_tmax=0.7, r_spr_gmax=0.5, r_cat_tmax=0.3, r_cat_gmax=0.7, output_times=[1, 2])
-# 
-# %%
