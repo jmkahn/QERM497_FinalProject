@@ -50,16 +50,15 @@ def initialize_forest(L, d, init_grass, init_tree):
     Ash, grass and trees are represented by ints: 0=ash; 1=grass; 2=tree.'''
     # create (L+2d)x(L+2d) array(forest)
     # Randomly populate forest with trees and grass based on initial conditions
-    forest = np.random.choice([0,1,2],
+    forest = np.random.choice([ASH, GRASS, TREE],
                               size=(L+2*d,L+2*d), 
                               p=[1-(init_tree+init_grass), init_grass, init_tree])
-    # 0=ash; 1=grass; 2=tree
-    # Set boundary region (2d length around edge) to be all ash 
-    forest[:, 0:d] = 0
-    forest[:, (L+d):] = 0
-    forest[0:d, :] = 0
-    forest[(L+d):, :] = 0
 
+    # Set boundary region (2d length around edge) to be all ash 
+    forest[:, 0:d] = ASH
+    forest[:, (L+d):] = ASH
+    forest[0:d, :] = ASH
+    forest[(L+d):, :] = ASH
     return forest
 
 def get_neighbors(forest, location, r):
@@ -145,26 +144,26 @@ def fire_season(forest, L, probs_dict):
     # Fire_type = 1 or 2 depending on whether each cell is tree or grass fire (aligned with Fire_location list) 
     fire_type=[]
 
-    def ignite(location, type): 
+    def ignite(location, veg_type): 
         """Helper function which does all the steps needed when a new cell ignites"""
         # Add to fire_location 
         fire_location.append(location)
         # Add to fire_type
-        fire_type.append(type)
+        fire_type.append(veg_type)
         # set location to ash. 
         # technically it's not ash yet, but since we are keeping 
         # track of fire type and location in the other lists we 
         # don't need to in the world. We need to set it to ash 
         # so it doesn't ignite again (ie get doubles in fire_location/fire_type)
-        forest[location] = 0
+        forest[location] = ASH
 
     # -----FIRE SEASON STARTS----- #
     ### IGNITION
     # Randomly select some of the vegetation cells to ignite and add to the lists 
     ignition_probs = np.random.rand(L*L)
     ignition_probs.resize(L,L)
-    grass_ignitions = (ignition_probs < probs_dict["p_ig_g"]) & (forest[d:L+d, d:L+d] == 1)
-    tree_ignitions = (ignition_probs < probs_dict["p_ig_t"]) & (forest[d:L+d, d:L+d] == 2)
+    grass_ignitions = (ignition_probs < probs_dict["p_ig_g"]) & (forest[d:L+d, d:L+d] == GRASS)
+    tree_ignitions = (ignition_probs < probs_dict["p_ig_t"]) & (forest[d:L+d, d:L+d] == TREE)
     
     if (len(grass_ignitions)+len(tree_ignitions) == 0): 
         return forest
@@ -175,12 +174,12 @@ def fire_season(forest, L, probs_dict):
     for i, grass_x in enumerate(grass_fire_locations[0]): 
         # Need to add d back in
         location = (grass_x + d, grass_fire_locations[1][i] + d)
-        ignite(location=location, type=1)
+        ignite(location=location, veg_type=1)
     # Add tree to fire_location list
     tree_fire_locations = np.where(tree_ignitions)
     for i, tree_x in enumerate(tree_fire_locations[0]): 
         location = (tree_x + d, tree_fire_locations[1][i] + d)
-        ignite(location=location, type=2)
+        ignite(location=location, veg_type=2)
 
     ### FIRE SPREADS UNTIL IT IS ALL BURNED OUT
     # While there are still cells on fire:
@@ -188,7 +187,7 @@ def fire_season(forest, L, probs_dict):
 
         # Take the first element in fire_location: 	
         location = fire_location.pop(0)
-        type = fire_type.pop(0)
+        veg_type = fire_type.pop(0)
 
         # Get its neighbors (3x3 moore neighborhood)
         neighbors = forest[location[0]-1:location[0]+2, location[1]-1:location[1]+2]
@@ -204,7 +203,7 @@ def fire_season(forest, L, probs_dict):
             # two dimensions, one for spread, one for catch
             fire_probs = np.random.rand(2, len(foliage_neighbors))
 
-            if type == 1: # GRASS
+            if veg_type == GRASS: 
                 spread = fire_probs[0] < probs_dict["r_g_spread"]
             else: # TREE
                 spread = fire_probs[0] < probs_dict["r_t_spread"]
@@ -212,9 +211,9 @@ def fire_season(forest, L, probs_dict):
             # Get which cells fire actually ignites, given it spreads
             for i, neighbor in enumerate(foliage_neighbors): 
                 if spread[i]: 
-                    if ( neighbor == 1 # GRASS
+                    if ( neighbor == GRASS
                         & (fire_probs[1][i] < probs_dict["r_g_catch"]) # grass catch prob
-                    ) or ( neighbor == 2 # TREE
+                    ) or ( neighbor == TREE
                         & (fire_probs[1][i] < probs_dict["r_t_catch"]) # tree catch prob
                     ): 
                         # Get index
@@ -228,15 +227,15 @@ def fire_season(forest, L, probs_dict):
             fire_probs = np.random.rand(len(foliage_neighbors))
 
             for i, neighbor in enumerate(foliage_neighbors): 
-                if (type == 1 # GRASS
-                        and (neighbor == 1 # grass-grass
+                if (veg_type == GRASS
+                        and (neighbor == GRASS
                             and (fire_probs[i] < probs_dict["p_spr_gg"])) 
-                        or  (neighbor == 2 # grass-tree
+                        or  (neighbor == TREE 
                             and (fire_probs[i] < probs_dict["p_spr_gt"]))
-                    ) or (type == 2 # TREE
-                        and (neighbor == 1 # tree-grass
+                    ) or (veg_type == TREE
+                        and (neighbor == GRASS
                             and (fire_probs[i] < probs_dict["p_spr_tg"])) 
-                        or  (neighbor == 2 # tree-tree
+                        or  (neighbor == TREE
                             and (fire_probs[i] < probs_dict["p_spr_tt"]))
                     ): 
                     
@@ -245,7 +244,7 @@ def fire_season(forest, L, probs_dict):
                     ny = foliage_indices[1][i]
                     # Use relative location to get location in forest
                     new_location = (location[0] + (nx-1), location[1] + (ny-1))
-                    ignite(location=new_location, type=neighbor)
+                    ignite(location=new_location, veg_type=neighbor)
                       
 
 
