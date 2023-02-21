@@ -8,7 +8,7 @@ ASH = 0
 GRASS = 1
 TREE = 2
 
-def set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): #TODO: J
+def set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
     '''
     Creates a dictionary of growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters and moisture levels
     Params: 
@@ -59,7 +59,7 @@ def initialize_forest(L, d, init_grass, init_tree):
     forest[:, (L+d):] = 0
     forest[0:d, :] = 0
     forest[(L+d):, :] = 0
-    
+
     return forest
 
 def get_neighbors(forest, location, r):
@@ -94,6 +94,7 @@ def try_propagate(neighbors, p_prop, current_val, new_val):
     of at least 1 neighbor propagating to this square 
     ie the complement of (NO neighbors propagating here)
     """
+    rng = np.random.default_rng()
     num_surrounding_sources = np.count_nonzero(neighbors == new_val)
     p_grow = 1 - (1-p_prop)**(num_surrounding_sources)
     if rng.binomial(n=1, p=p_grow): # random trial to see if new plant grows
@@ -105,10 +106,10 @@ def try_propagate(neighbors, p_prop, current_val, new_val):
 def grow_season(forest, params_dict):
     '''grow_season runs one iteration of the world in which new vegetation grows'''
     # set up tools + get parameters 
-    rng = np.random.default_rng()
-    forest_iter = np.nditer(forest, flags=['multi_index'])
+    forest_iter = np.nditer(forest, flags=['multi_index']) # BUG: does not respect border boundary conditions 
     d = params_dict['d']
-    p_gro_ag = params_dict['p_gro_ag']
+    L = params_dict['L']
+    p_gro_ag = params_dict['p_gro_ag'] 
     p_gro_gt = params_dict['p_gro_gt']
 
     # Iterate across the forest grid 
@@ -118,13 +119,18 @@ def grow_season(forest, params_dict):
        
         # If ash: roll to see if grows grass or stays ash
         if forest_cell == ASH: 
-          forest[current_index] = try_propagate(neighbors, ASH, GRASS)
+          forest[current_index] = try_propagate(neighbors, p_gro_ag, ASH, GRASS)
         # If grass: roll to see if grows tree or stays grass 
         if forest_cell == GRASS: 
-            forest[current_index] = try_propagate(neighbors, GRASS, TREE) 
-    
+            forest[current_index] = try_propagate(neighbors, p_gro_gt, GRASS, TREE) 
+
+    # make the buffer stay ash
+    forest[0:d, ] = ASH # top strip
+    forest[:, 0:d] = ASH # left strip
+    forest[-d:, ] = ASH # bottom strip
+    forest[:, -d: ] = ASH # right strip 
     # Return world at next time step #TODO: collect data 
-    return world
+    return forest
 
 def fire_season(forest, L, probs_dict): 
     '''fire_season runs one iteration of the world, in which wildfires initiate, propagate, and die out'''
@@ -247,6 +253,14 @@ def fire_season(forest, L, probs_dict):
     # Return world at next time step (and optional data) 
     return forest
 
+def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
+    '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
+    around through the simulation''' 
+    params_dict = {'m': m, 'L' : L, 'd' : d}
+    probs_dict = set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax) # Set all the probabilities based on moisture levels 
+    params_dict.update(probs_dict) 
+    return params_dict
+
 def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
@@ -264,10 +278,8 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
         init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
     '''
     forest = initialize_forest(L, d, init_grass, init_tree)
-    params_dict = {'m': m, 'L' : L, 'd' : d}
-    probs_dict = set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax) # Set all the probabilities based on moisture levels 
-    params_dict.update(probs_dict) # pass all parameters around as 1 thing
-
+    params_dict = initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax)
+    
     save_counter = 0 # save state data at select times 
     output_slices = np.zeros((len(output_times), (L+2*d), (L+2*d)))
     for t in range(t_steps): 
