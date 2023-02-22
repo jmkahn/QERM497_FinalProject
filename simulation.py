@@ -114,7 +114,7 @@ def fire_season(forest, params_dict):
     # Create two lists: 
     # Fire_location = list of locations of currently on-fire cells in grid
     fire_location=[]
-    # Fire_type = 1 or 2 depending on whether each cell is tree or grass fire (aligned with Fire_location list) 
+    # Fire_type = GRASS or TREE depending on whether each cell is tree or grass fire (aligned with Fire_location list) 
     fire_type=[]
     # Keep track of total number of cells burned
     area_burned=0
@@ -140,21 +140,20 @@ def fire_season(forest, params_dict):
     grass_ignitions = (ignition_probs < params_dict["p_ig_g"]) & (forest[d:L+d, d:L+d] == GRASS)
     tree_ignitions = (ignition_probs < params_dict["p_ig_t"]) & (forest[d:L+d, d:L+d] == TREE)
     
+    ### end fire season if there were no ignitions 
     if (len(grass_ignitions)+len(tree_ignitions) == 0): 
         return forest
     
-    # add grass to fire_location list
-    # need to add d back in so it lines up with full world with boundaries
+    # add grass ignitions to fire_location list
     grass_fire_locations = np.where(grass_ignitions) 
     for i, grass_x in enumerate(grass_fire_locations[0]): 
-        # Need to add d back in
-        location = (grass_x + d, grass_fire_locations[1][i] + d)
-        ignite(location=location, veg_type=1)
-    # Add tree to fire_location list
+        location = (grass_x + d, grass_fire_locations[1][i] + d) # need to add d back in so it lines up with full world with boundaries
+        ignite(location=location, veg_type=GRASS)
+    # Add tree ignitions to fire_location list
     tree_fire_locations = np.where(tree_ignitions)
     for i, tree_x in enumerate(tree_fire_locations[0]): 
         location = (tree_x + d, tree_fire_locations[1][i] + d)
-        ignite(location=location, veg_type=2)
+        ignite(location=location, veg_type=TREE)
 
     ### FIRE SPREADS UNTIL IT IS ALL BURNED OUT
     # While there are still cells on fire:
@@ -236,23 +235,28 @@ def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p
     params_dict.update(probs_dict) 
     return params_dict
 
-import matplotlib.pyplot as plt
-
 def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
-        m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
-        L : (int) side length of forest
-        t_steps : (int) Number of “years” (alternations between growth and fire season) to run simulation for
-        d : (int) Radius of neighborhood during growth season (3x3 Moore neighborhood is d=2; exact size of neighborhood given by (2d-1)); also the size of the ash buffer around the edge of the world 
-        p_ig_gmax : (float) Maximum probability of spontaneous grass ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
-        p_ig_tmax : (float) Maximum probability of spontaneous tree ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
-        r_spr_tmax : (float) Max rate at which fire spreads from a tree (r_spr_gmax < r_spr_tmax) 
-        r_spr_gmax : (float) Max rate at which fire spreads from grass to neighbors (r_spr_gmax < r_spr_tmax
-        r_cat_tmax : (float) Max rate at which trees catch fire from nearby source (r_cat_tmax < r_cat_gmax)
-        r_cat_gmax : (float) Max rate at which grass catches fire from nearby source (r_cat_tmax < r_cat_gmax)
-        init_tree : (float) Initial proportion of tree cover (0 to 1; init_tree + init_grass <= 1) 
-        init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
+        - m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
+        - L : (int) side length of forest
+        - t_steps : (int) Number of “years” (alternations between growth and fire season) to run simulation for
+        - d : (int) Radius of neighborhood during growth season (3x3 Moore neighborhood is d=2; exact size of neighborhood given by (2d-1)); also the size of the ash buffer around the edge of the world 
+        - p_ig_gmax : (float) Maximum probability of spontaneous grass ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
+        - p_ig_tmax : (float) Maximum probability of spontaneous tree ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
+        - r_spr_tmax : (float) Max rate at which fire spreads from a tree (r_spr_gmax < r_spr_tmax) 
+        - r_spr_gmax : (float) Max rate at which fire spreads from grass to neighbors (r_spr_gmax < r_spr_tmax
+        - r_cat_tmax : (float) Max rate at which trees catch fire from nearby source (r_cat_tmax < r_cat_gmax)
+        - r_cat_gmax : (float) Max rate at which grass catches fire from nearby source (r_cat_tmax < r_cat_gmax)
+        - init_tree : (float) Initial proportion of tree cover (0 to 1; init_tree + init_grass <= 1) 
+        - init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
+
+    Returns:
+        - dict with results + data: 
+            - output_slices: array, each element contains (alternating) state of forest pre- and post- fire for select years
+            - area_burned: array, each element indicates number of vegetation cells burned during each fire season
+            - tree_count: array, each element indicates number of tree cells in forest after fire season each year 
+            - grass_count: array, each element indicates number of grass cells in forest after fire season each year 
     '''
     forest = initialize_forest(L, d, init_grass, init_tree)
     params_dict = initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax)
@@ -265,7 +269,7 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
     tree_count = np.zeros(t_steps)
     grass_count = np.zeros(t_steps)
     for t in range(t_steps): 
-        forest = grow_season(forest, params_dict) #TODO: return data 
+        forest = grow_season(forest, params_dict) #TODO: return data?
         forest, area_burned = fire_season(forest, params_dict)
 
         # Save outputs which get recorded every year
@@ -273,7 +277,7 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
         tree_count[t] = np.sum(forest == TREE)
         grass_count[t] = np.sum(forest == GRASS)
 
-        # Save select outputs
+        # Save select outputs both pre- and post-fire 
         if t in output_times: 
             output_slices[save_counter] = forest
             save_counter += 1
