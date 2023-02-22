@@ -3,6 +3,8 @@ This module gives the code to simulate a forest fire [add description]
 Written by J Kahn and Helen Miller 
 '''
 import numpy as np 
+from scipy.ndimage import generic_filter
+
 
 ASH = 0 
 GRASS = 1
@@ -59,73 +61,40 @@ def initialize_forest(L, d, init_grass, init_tree):
     forest[:, (L+d):] = ASH
     forest[0:d, :] = ASH
     forest[(L+d):, :] = ASH
-    return forest
+    return forest    
 
-def try_propagate(neighbors, p_prop, current_val, new_val):
-    """
-    attempts to propagate vegetation from surrounding cells into the focal cell. returns 
-    the new state of the focal cell 
-    Args:
-        neighbors (nd_array): array giving all the neighbors of the focal cell 
-        p_prop (float): probability of new vegetation growing in the focal cell from 1 neighbor 
-        current_val (int): the current state of the focal cell 
-        new_val (int): the 'spreading' vegetation
-
-    Returns:
-        int: the value of the cell after the propagation attempt
-    
-    probability of new veg growing in this square is equal to the probability 
-    of at least 1 neighbor propagating to this square 
-    ie the complement of (NO neighbors propagating here)
-    """
-    rng = np.random.default_rng()
-    num_surrounding_sources = np.count_nonzero(neighbors == new_val)
-    print("num surrounding sources", num_surrounding_sources)
-    p_grow = 1 - (1-p_prop)**(num_surrounding_sources)
-    if rng.binomial(n=1, p=p_grow): # random trial to see if new plant grows
-        return new_val 
-    else: 
-        return current_val
-
-    
-
-def get_neighbors(forest, location, d):
-    '''Retrieves the values of the neighbors of the cell at the given location 
-    in the forest
-
-    Params: 
-        - forest: 2d array
-        - location: (row, col) tuple
-        - d : radius of neighborhood, d>=1 (for just the focal cell, r=1; for 3x3 Moore neighborhood, r=2)
-    Returns: 
-        - 2d array with dimensions (2d-1, 2d-1)
-    '''
-    # see https://docs.scipy.org/doc/scipy/tutorial/ndimage.html#filter-functions 
-    # for specifications about how the footprint is created and used 
-    levels = generic_filter(world, sum, size=(s, s), mode='wrap')
-
+def count_equals(arr, val): 
+    return np.count_nonzero(arr == val)
 
 
 def grow_season(forest, params_dict):
     '''grow_season runs one iteration of the world in which new vegetation grows'''
     # set up tools + get parameters 
+    rng = np.random.default_rng()
     forest_iter = np.nditer(forest, flags=['multi_index'], op_flags=['readwrite'])# BUG: I think this iteration is not updating the grid?
     d = params_dict['d']
     L = params_dict['L']
     p_gro_ag = params_dict['p_gro_ag'] 
     p_gro_gt = params_dict['p_gro_gt']
 
-    # Iterate across the forest grid 
-    for forest_cell in forest_iter: 
-        current_index = forest_iter.multi_index
-        neighbors = get_neighbors(forest, current_index, d) #get states of neighbors in (2d-1)x(2d-1) neighborhood
-       
-        # If ash: roll to see if grows grass or stays ash
-        if forest_cell == ASH: 
-          forest[current_index] = try_propagate(neighbors, p_gro_ag, ASH, GRASS)
-        # If grass: roll to see if grows tree or stays grass 
-        if forest_cell == GRASS: 
-            forest[current_index] = try_propagate(neighbors, p_gro_gt, GRASS, TREE) 
+
+
+    ### propagate grass into ash cells 
+    # num_grass_sources = array w number of sources in neighborhood of focal cell
+    num_grass_sources = generic_filter(forest, count_equals, size=(2*d-1, 2*d-1), mode='constant', extra_arguments=(GRASS, ))
+    # probability of new veg growing in each square is equal to the probability 
+    # of at least 1 neighbor propagating to this square 
+    # ie the complement of (NO neighbors propagating here)
+    p_grow_grass = 1 - (1-p_gro_ag)**(num_grass_sources)
+    # roll dice to see if grass grow in any of the ash squares 
+    new_grass = np.where(forest==ASH, np.random.binomial(1, p_grow_grass), 0)
+    forest = forest + new_grass # since GRASS = 1 and ASH = 0, can add the new values to forest
+
+    ### do the same process as above to propagate trees into grass cells
+    num_tree_sources = generic_filter(forest, count_equals, size=(2*d-1, 2*d-1), mode='constant', extra_arguments=(TREE, ))
+    p_grow_tree = 1 - (1-p_gro_gt)**(num_tree_sources)
+    new_trees = np.where(forest==GRASS, np.random.binomial(1, p_grow_tree), 0)
+    forest = forest + new_trees # since TREE = 2 and GRASS = 1, can add the new values to prev grass
 
     # make the buffer stay ash
     forest[0:d, ] = ASH # top strip

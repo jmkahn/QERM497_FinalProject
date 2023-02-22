@@ -18,7 +18,7 @@ set_probabilities(0.5, 0.01, 0.002, 0.7, 0.5, 0.3, 0.7)
 
 # %% 
 # test run_simulation 
-output = run_simulation(m=0.5, L=10, t_steps=5, d=2, init_grass=0.3, init_tree=0.4, p_ig_gmax=0.1, p_ig_tmax=0.02, r_spr_tmax=0.7, r_spr_gmax=0.5, r_cat_tmax=0.3, r_cat_gmax=0.7, output_times=[0, 1, 2, 3, 4])
+output = run_simulation(m=0.8, L=10, t_steps=5, d=2, init_grass=0.1, init_tree=0.1, p_ig_gmax=0.1, p_ig_tmax=0.02, r_spr_tmax=0.7, r_spr_gmax=0.5, r_cat_tmax=0.3, r_cat_gmax=0.7, output_times=[0, 1, 2, 3, 4])
 plot_slices_of_simulation(output, [0,1,2,3,4])
 # 
 # %%
