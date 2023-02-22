@@ -61,21 +61,6 @@ def initialize_forest(L, d, init_grass, init_tree):
     forest[(L+d):, :] = ASH
     return forest
 
-def get_neighbors(forest, location, r):
-    '''Retrieves the values of the neighbors of the cell at the given location 
-    in the forest
-
-    Params: 
-        - forest: 2d array
-        - location: (row, col) tuple
-        - r : radius of neighborhood, r>=1 (for just the focal cell, r=1; for 3x3 Moore neighborhood, r=2)
-    Returns: 
-        - 2d array with dimensions (2r-1, 2r-1)
-    '''
-    low_bound = r-1 
-    up_bound = r
-    return forest[location[0]-low_bound:location[0]+up_bound, location[1]-low_bound:location[1]+up_bound]
-
 def try_propagate(neighbors, p_prop, current_val, new_val):
     """
     attempts to propagate vegetation from surrounding cells into the focal cell. returns 
@@ -95,17 +80,36 @@ def try_propagate(neighbors, p_prop, current_val, new_val):
     """
     rng = np.random.default_rng()
     num_surrounding_sources = np.count_nonzero(neighbors == new_val)
+    print("num surrounding sources", num_surrounding_sources)
     p_grow = 1 - (1-p_prop)**(num_surrounding_sources)
     if rng.binomial(n=1, p=p_grow): # random trial to see if new plant grows
         return new_val 
     else: 
         return current_val
 
+    
+
+def get_neighbors(forest, location, d):
+    '''Retrieves the values of the neighbors of the cell at the given location 
+    in the forest
+
+    Params: 
+        - forest: 2d array
+        - location: (row, col) tuple
+        - d : radius of neighborhood, d>=1 (for just the focal cell, r=1; for 3x3 Moore neighborhood, r=2)
+    Returns: 
+        - 2d array with dimensions (2d-1, 2d-1)
+    '''
+    # see https://docs.scipy.org/doc/scipy/tutorial/ndimage.html#filter-functions 
+    # for specifications about how the footprint is created and used 
+    levels = generic_filter(world, sum, size=(s, s), mode='wrap')
+
+
 
 def grow_season(forest, params_dict):
     '''grow_season runs one iteration of the world in which new vegetation grows'''
     # set up tools + get parameters 
-    forest_iter = np.nditer(forest, flags=['multi_index']) # BUG: does not respect border boundary conditions 
+    forest_iter = np.nditer(forest, flags=['multi_index'], op_flags=['readwrite'])# BUG: I think this iteration is not updating the grid?
     d = params_dict['d']
     L = params_dict['L']
     p_gro_ag = params_dict['p_gro_ag'] 
@@ -263,13 +267,15 @@ def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p
     params_dict.update(probs_dict) 
     return params_dict
 
+import matplotlib.pyplot as plt
+
 def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
         m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
         L : (int) side length of forest
         t_steps : (int) Number of “years” (alternations between growth and fire season) to run simulation for
-        d : (int) Radius of neighborhood during growth season 
+        d : (int) Radius of neighborhood during growth season (3x3 Moore neighborhood is d=2; exact size of neighborhood given by (2d-1)); also the size of the ash buffer around the edge of the world 
         p_ig_gmax : (float) Maximum probability of spontaneous grass ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
         p_ig_tmax : (float) Maximum probability of spontaneous tree ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
         r_spr_tmax : (float) Max rate at which fire spreads from a tree (r_spr_gmax < r_spr_tmax) 
