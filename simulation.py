@@ -131,18 +131,20 @@ def grow_season(forest, params_dict):
     # Return world at next time step #TODO: collect data 
     return forest
 
-def fire_season(forest, L, probs_dict): 
+def fire_season(forest, params_dict): 
     '''fire_season runs one iteration of the world, in which wildfires initiate, propagate, and die out'''
     # TODO: add some checks/tests so function throws useful errors if something goes wrong
     
     # -----INITIALIZE----- #
-    # get length of non-forest border
-    d=int((forest.shape[0] - L)/2)
+    L=params_dict["L"]
+    d=params_dict["d"]
     # Create two lists: 
     # Fire_location = list of locations of currently on-fire cells in grid
     fire_location=[]
     # Fire_type = 1 or 2 depending on whether each cell is tree or grass fire (aligned with Fire_location list) 
     fire_type=[]
+    # Keep track of total number of cells burned
+    area_burned=0
 
     def ignite(location, veg_type): 
         """Helper function which does all the steps needed when a new cell ignites"""
@@ -162,8 +164,8 @@ def fire_season(forest, L, probs_dict):
     # Randomly select some of the vegetation cells to ignite and add to the lists 
     ignition_probs = np.random.rand(L*L)
     ignition_probs.resize(L,L)
-    grass_ignitions = (ignition_probs < probs_dict["p_ig_g"]) & (forest[d:L+d, d:L+d] == GRASS)
-    tree_ignitions = (ignition_probs < probs_dict["p_ig_t"]) & (forest[d:L+d, d:L+d] == TREE)
+    grass_ignitions = (ignition_probs < params_dict["p_ig_g"]) & (forest[d:L+d, d:L+d] == GRASS)
+    tree_ignitions = (ignition_probs < params_dict["p_ig_t"]) & (forest[d:L+d, d:L+d] == TREE)
     
     if (len(grass_ignitions)+len(tree_ignitions) == 0): 
         return forest
@@ -188,6 +190,7 @@ def fire_season(forest, L, probs_dict):
         # Take the first element in fire_location: 	
         location = fire_location.pop(0)
         veg_type = fire_type.pop(0)
+        area_burned += 1
 
         # Get its neighbors (3x3 moore neighborhood)
         neighbors = forest[location[0]-1:location[0]+2, location[1]-1:location[1]+2]
@@ -204,17 +207,17 @@ def fire_season(forest, L, probs_dict):
             fire_probs = np.random.rand(2, len(foliage_neighbors))
 
             if veg_type == GRASS: 
-                spread = fire_probs[0] < probs_dict["r_g_spread"]
+                spread = fire_probs[0] < params_dict["r_g_spread"]
             else: # TREE
-                spread = fire_probs[0] < probs_dict["r_t_spread"]
+                spread = fire_probs[0] < params_dict["r_t_spread"]
             
             # Get which cells fire actually ignites, given it spreads
             for i, neighbor in enumerate(foliage_neighbors): 
                 if spread[i]: 
                     if ( neighbor == GRASS
-                        & (fire_probs[1][i] < probs_dict["r_g_catch"]) # grass catch prob
+                        & (fire_probs[1][i] < params_dict["r_g_catch"]) # grass catch prob
                     ) or ( neighbor == TREE
-                        & (fire_probs[1][i] < probs_dict["r_t_catch"]) # tree catch prob
+                        & (fire_probs[1][i] < params_dict["r_t_catch"]) # tree catch prob
                     ): 
                         # Get index
                         nx = foliage_indices[0][i]
@@ -229,14 +232,14 @@ def fire_season(forest, L, probs_dict):
             for i, neighbor in enumerate(foliage_neighbors): 
                 if (veg_type == GRASS
                         and (neighbor == GRASS
-                            and (fire_probs[i] < probs_dict["p_spr_gg"])) 
+                            and (fire_probs[i] < params_dict["p_spr_gg"])) 
                         or  (neighbor == TREE 
-                            and (fire_probs[i] < probs_dict["p_spr_gt"]))
+                            and (fire_probs[i] < params_dict["p_spr_gt"]))
                     ) or (veg_type == TREE
                         and (neighbor == GRASS
-                            and (fire_probs[i] < probs_dict["p_spr_tg"])) 
+                            and (fire_probs[i] < params_dict["p_spr_tg"])) 
                         or  (neighbor == TREE
-                            and (fire_probs[i] < probs_dict["p_spr_tt"]))
+                            and (fire_probs[i] < params_dict["p_spr_tt"]))
                     ): 
                     
                     # ignite!
@@ -250,7 +253,7 @@ def fire_season(forest, L, probs_dict):
 
         # (Optionally record data)
     # Return world at next time step (and optional data) 
-    return forest
+    return forest, area_burned
 
 def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
     '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
@@ -281,11 +284,27 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
     
     save_counter = 0 # save state data at select times 
     output_slices = np.zeros((len(output_times), (L+2*d), (L+2*d)))
+
+    # initialize some key things to save at every time point
+    area_burned_output = np.zeros(t_steps)
+    tree_count = np.zeros(t_steps)
+    grass_count = np.zeros(t_steps)
     for t in range(t_steps): 
         forest = grow_season(forest, params_dict) #TODO: return data 
-        forest = fire_season(forest, L, params_dict)
+        forest, area_burned = fire_season(forest, params_dict)
+
+        # Save outputs which get recorded every year
+        area_burned_output[t] = area_burned
+        tree_count[t] = np.sum(forest == TREE)
+        grass_count[t] = np.sum(forest == GRASS)
+
+        # Save select outputs
         if t in output_times: 
             output_slices[save_counter] = forest
             save_counter += 1
-    return output_slices
+            
+    return {"output_slices": output_slices, 
+            "area_burned": area_burned_output, 
+            "tree_count": tree_count, 
+            "grass_count": grass_count}
 

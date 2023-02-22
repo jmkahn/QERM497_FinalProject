@@ -3,8 +3,13 @@ from simulation import *
 from visualization_options import plot_slices_of_simulation
 import matplotlib.pyplot as plt
 output =  run_simulation(m=0.5, L=40, t_steps=5, d=1, init_grass=0.05, init_tree=0.95, p_ig_gmax=0.001, p_ig_tmax=0.0002, r_spr_tmax=0.8, r_spr_gmax=0.5, r_cat_tmax=0.3, r_cat_gmax=0.8, output_times=[0, 1, 2, 3, 4])
-plot_slices_of_simulation(output, [0,1,2,3,4])
+#plot_slices_of_simulation(output, [0,1,2,3,4])
 
+#%%
+from simulation import *
+forest = initialize_forest(L=40, d=1, init_grass=0.05, init_tree=0.95)
+params_dict = initialize_params_dict(m=0.5, L=40, t_steps=20, d=1, init_grass=0.05, init_tree=0.95, p_ig_gmax=0.003, p_ig_tmax=0.0001, r_spr_tmax=0.8, r_spr_gmax=.5, r_cat_tmax=0.3, r_cat_gmax=.8)
+fire_season(forest, params_dict)
 # %% 
 # test set_probabilities function (w/out moisture dependence)
 set_probabilities(0.5, 0.01, 0.002, 0.7, 0.5, 0.3, 0.7)
