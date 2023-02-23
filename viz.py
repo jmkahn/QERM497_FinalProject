@@ -20,11 +20,10 @@ def plot_slices_of_simulation(slices, times, burn_masks=None):
 
     fig, ax = plt.subplots(nrows=num_rows, ncols=len(times), figsize=(20, 8))
     for i in range(len(times)): 
-        if i != 0: # only show labels for first subplot
-            ax[0][i].xaxis.set_visible(False) 
-            ax[0][i].yaxis.set_visible(False)
-            ax[num_rows-1][i].xaxis.set_visible(False) 
-            ax[num_rows-1][i].yaxis.set_visible(False)
+        ax[0][i].xaxis.set_visible(False) #hide axis ticks 
+        ax[0][i].yaxis.set_visible(False)
+        ax[num_rows-1][i].xaxis.set_visible(False) 
+        ax[num_rows-1][i].yaxis.set_visible(False)
 
         # show the plot after growth season 
         ax[0][i].imshow(slices[2*i], cmap=cmap, norm=norm)
@@ -41,12 +40,26 @@ def plot_slices_of_simulation(slices, times, burn_masks=None):
 
 
         # label top row only 
-        ax[0][i].title.set_text("year = "+str(times[int(i/num_rows)]))
+        ax[0][i].title.set_text("year = "+str(times[i]))
 
     # label top row as "pre-fire" and bottom row as "post-fire" #TODO: not done, looks bad rn 
     # ax[0].set_ylabel("Pre-fire season", rotation = 0, fontsize = 20, labelpad = 50)
 
+    #only show axis ticks for first plot
+    ax[0][0].xaxis.set_visible(True) 
+    ax[0][0].yaxis.set_visible(True)
 
     fig.suptitle("State of simulation at various time steps")
-    plt.show()
-    
+    return fig, ax
+
+def veg_fire_over_time(t_steps, results_dict):
+    '''line plot of amount of grass, trees, and fire over time'''
+    fig = plt.figure(figsize=(12, 6))
+    plt.plot(range(t_steps), results_dict['grass_count'], color="yellow")
+    plt.plot(range(t_steps), results_dict['tree_count'], color='green')
+    plt.plot(range(t_steps), results_dict['area_burned'], color='orange')
+    plt.suptitle("Dynamics of simulation over time")
+    plt.legend(fontsize="large")
+    plt.xlabel("Time steps ('years')")
+    plt.ylabel("Units of Vegetation/Fire")
+    return fig
