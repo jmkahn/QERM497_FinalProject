@@ -90,6 +90,7 @@ def grow_season(forest, params_dict):
     # add probability of veg randomly seeding there (long-range dispersal
     # clip at 0, 1
     p_grow_grass = np.clip((p_grow_grass + p_gro_g), 0, 1)
+
     # roll dice to see if grass grow in any of the ash squares 
     new_grass = np.where(forest==ASH, np.random.binomial(1, p_grow_grass), 0)
     forest = forest + new_grass # since GRASS = 1 and ASH = 0, can add the new values to forest
