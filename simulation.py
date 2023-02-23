@@ -1,5 +1,5 @@
 '''
-This module gives the code to simulate a forest fire [add description]
+This module gives the code to simulate a forest fire [#TODO: add description]
 Written by J Kahn and Helen Miller 
 '''
 import numpy as np 
@@ -118,6 +118,8 @@ def fire_season(forest, params_dict):
     fire_type=[]
     # Keep track of total number of cells burned
     area_burned=0
+    # and their locations 
+    indices_burned = []
 
     def ignite(location, veg_type): 
         """Helper function which does all the steps needed when a new cell ignites"""
@@ -163,6 +165,7 @@ def fire_season(forest, params_dict):
         location = fire_location.pop(0)
         veg_type = fire_type.pop(0)
         area_burned += 1
+        indices_burned.append(location)
 
         # Get its neighbors (3x3 moore neighborhood)
         neighbors = forest[location[0]-1:location[0]+2, location[1]-1:location[1]+2]
@@ -225,7 +228,7 @@ def fire_season(forest, params_dict):
 
         # (Optionally record data)
     # Return world at next time step (and optional data) 
-    return forest, area_burned
+    return forest, area_burned, indices_burned
 
 def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
     '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
@@ -234,6 +237,26 @@ def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p
     probs_dict = set_probabilities(m, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax) # Set all the probabilities based on moisture levels 
     params_dict.update(probs_dict) 
     return params_dict
+
+def mask_burned_indices(burn_indices, dim): 
+    '''creates and returns a binary mask (1= was burned, 0= not burned)
+    Params: 
+        - burn_indices = array-like/list of 2-d indices in form [[i1, j1], [i2, j2]...]
+        - dim = side length of output mask (should match dim of forest)
+    Returns 
+        - (nd array) dim x dim mask 
+    '''
+    mask = np.zeros(dim*dim)
+    if len(burn_indices) > 0: # if nothing was burned, return a mask of all 0s
+        burn_indices = np.array(burn_indices)
+        # convert multi-indices to a list of single dimensional indices 
+        burn_area_flat_index = dim*burn_indices[:, 0] + burn_indices[:, 1]
+        # apply to a flattened mask
+        mask[burn_area_flat_index] = 1
+        # reshape mask back to intended dim 
+    mask = mask.reshape((dim, dim))
+    return mask 
+
 
 def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
@@ -262,28 +285,37 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax
     params_dict = initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax)
     
     save_counter = 0 # save state data at select times 
-    output_slices = np.zeros((len(output_times), (L+2*d), (L+2*d)))
+    output_slices = np.zeros((len(2*output_times), (L+2*d), (L+2*d)))
 
     # initialize some key things to save at every time point
+    area_burned_mask = np.zeros((t_steps, (L+2*d), (L+2*d)))
     area_burned_output = np.zeros(t_steps)
     tree_count = np.zeros(t_steps)
     grass_count = np.zeros(t_steps)
     for t in range(t_steps): 
         forest = grow_season(forest, params_dict) #TODO: return data?
-        forest, area_burned = fire_season(forest, params_dict)
 
+        # save select outputs pre-fire 
+        if t in output_times: 
+            output_slices[save_counter] = forest
+            save_counter += 1
+
+        forest, area_burned, indices_burned = fire_season(forest, params_dict)
+
+        # todo: make indices_burned into an np array mask that can be applied over the state
         # Save outputs which get recorded every year
         area_burned_output[t] = area_burned
+        area_burned_mask[t] = mask_burned_indices(indices_burned, L+2*d)
         tree_count[t] = np.sum(forest == TREE)
         grass_count[t] = np.sum(forest == GRASS)
 
-        # Save select outputs both pre- and post-fire 
+        # Save select outputs post-fire 
         if t in output_times: 
             output_slices[save_counter] = forest
             save_counter += 1
             
     return {"output_slices": output_slices, 
+            "burned_area_masks" : area_burned_mask,
             "area_burned": area_burned_output, 
             "tree_count": tree_count, 
             "grass_count": grass_count}
-
