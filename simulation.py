@@ -10,7 +10,7 @@ ASH = 0
 GRASS = 1
 TREE = 2
 
-def set_probabilities(m, p_gro_gmax, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
+def set_probabilities(m, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
     '''
     Creates a dictionary of growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters and moisture levels
     Params: 
@@ -22,8 +22,8 @@ def set_probabilities(m, p_gro_gmax, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gma
         - r_gro_g: (probability that grass spontaneously grows in an ash site)j = p_grow_gmax*m
         - p_gro_ag: probability that grass propagates to neighboring ash site, equal to m 
         - p_gro_gt: probability that tree propagates to neighboring grass site, equal to m
-        - p_ig_t: (prob of tree ignition) = p_ig_tmax*(1 - m)
-        - p_ig_g: (prob of grass ignition) = p_ig_gmax*(1 - m)
+        - p_ig_t: (prob of tree ignition) = r_cat_tmax*p_lightning
+        - p_ig_g: (prob of grass ignition) = r_cat_tmax*p_lightning
         - p_spr_gg: prob of fire spreading from grass to neighboring grass
         - p_spr_tg: prob of fire spreading from tree to neighboring grass
         - p_spr_gt: prob of fire spreading from grass to neighboring tree
@@ -36,15 +36,15 @@ def set_probabilities(m, p_gro_gmax, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gma
     p_gro_gt = m
 
     # Ignition probabilities vary inversely with moisture level 
-    p_ig_g = p_ig_gmax #*(1 - m)
-    p_ig_t = p_ig_tmax #*(1 - m) #TODO: add in moisture dependence later 
+    p_ig_g = r_cat_tmax*(1-m)*p_lightning #*(1 - m)
+    p_ig_t = r_cat_gmax*(1-m)*p_lightning #*(1 - m) #TODO: add in moisture dependence later 
 
     # Fire spread between neighbors depends on moisture and state each cell 
     # Multiply (rate of spread) times (rate of catching) for each combination of (grass, tree) to get probabilities of fire spreading between trees and grass 
-    p_spr_gg = r_spr_gmax* r_cat_gmax #*(1-m)**2 #TODO: add moisture dependence 
-    p_spr_tg = r_spr_tmax* r_cat_gmax #*(1-m)**2
-    p_spr_gt = r_spr_gmax* r_cat_tmax #*(1-m)**2
-    p_spr_tt = r_spr_tmax* r_cat_tmax #*(1-m)**2
+    p_spr_gg = r_spr_gmax* r_cat_gmax *(1-m)**2 #TODO: add moisture dependence 
+    p_spr_tg = r_spr_tmax* r_cat_gmax *(1-m)**2
+    p_spr_gt = r_spr_gmax* r_cat_tmax *(1-m)**2
+    p_spr_tt = r_spr_tmax* r_cat_tmax *(1-m)**2
 
     # Returns an dict of all the transition probabilities
     return {"p_gro_g": p_gro_g, "p_gro_ag": p_gro_ag, "p_gro_gt": p_gro_gt, "p_ig_g": p_ig_g, "p_ig_t": p_ig_t, "p_spr_gg": p_spr_gg, "p_spr_tg": p_spr_tg, "p_spr_gt": p_spr_gt, "p_spr_tt": p_spr_tt}
@@ -213,14 +213,13 @@ def fire_season(forest, params_dict):
     # Return world at next time step (and optional data) 
     return forest, area_burned, indices_burned
 
-def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
+def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
     '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
     around through the simulation''' 
     params_dict = {'m': m, 'L' : L, 'd' : d}
     probs_dict = set_probabilities(m=m, 
                                    p_gro_gmax=p_gro_gmax,
-                                   p_ig_gmax=p_ig_gmax, 
-                                   p_ig_tmax=p_ig_tmax, 
+                                   p_lightning=p_lightning,
                                    r_spr_tmax=r_spr_tmax, 
                                    r_spr_gmax=r_spr_gmax, 
                                    r_cat_tmax=r_cat_tmax, 
@@ -248,7 +247,7 @@ def mask_burned_indices(burn_indices, dim):
     return mask 
 
 
-def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_ig_gmax, p_ig_tmax, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
+def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
         - m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
@@ -281,9 +280,8 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_ig_gma
                                          d=d, 
                                          init_grass=init_grass, 
                                          init_tree=init_tree, 
+                                         p_lightning=p_lightning,
                                          p_gro_gmax=p_gro_gmax,
-                                         p_ig_gmax=p_ig_gmax, 
-                                         p_ig_tmax=p_ig_tmax, 
                                          r_spr_tmax=r_spr_tmax, 
                                          r_spr_gmax=r_spr_gmax, 
                                          r_cat_tmax=r_cat_tmax, 
