@@ -98,8 +98,8 @@ def grow_season(forest, params_dict):
     ### do the same process as above to propagate trees into grass cells
     num_tree_sources = generic_filter(forest, count_equals, size=(2*d-1, 2*d-1), mode='constant', extra_arguments=(TREE, ))
     p_grow_tree = 1 - (1-p_gro_gt)**(num_tree_sources)
-    new_trees = np.where(forest==(GRASS or ASH), np.random.binomial(1, p_grow_tree), 0)
-    # since TREE = 2 and GRASS = 1: 
+    new_trees = np.where(forest != TREE, np.random.binomial(1, p_grow_tree), 0)
+    # since TREE = 2 and GRASS = 1 and ASH = 0: 
     # adding new value to grass will result in tree; 
     # adding new value to ash will result in grass
     forest = forest + new_trees 
