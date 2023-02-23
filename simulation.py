@@ -71,7 +71,6 @@ def grow_season(forest, params_dict):
     '''grow_season runs one iteration of the world in which new vegetation grows'''
     # set up tools + get parameters 
     rng = np.random.default_rng()
-    forest_iter = np.nditer(forest, flags=['multi_index'], op_flags=['readwrite'])# BUG: I think this iteration is not updating the grid?
     d = params_dict['d']
     L = params_dict['L']
     p_gro_ag = params_dict['p_gro_ag'] 
