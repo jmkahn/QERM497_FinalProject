@@ -25,15 +25,26 @@ set_probabilities(0.5, 0.01, 0.002, 0.7, 0.5, 0.3, 0.7)
 # %% 
 # test run_simulation 
 results_dict = run_simulation(m=0.8, L=10, t_steps=5, d=2, init_grass=0.1, init_tree=0.1, p_ig_gmax=0.1, p_ig_tmax=0.02, r_spr_tmax=0.7, r_spr_gmax=0.5, r_cat_tmax=0.3, r_cat_gmax=0.7, output_times=[0, 1, 2, 3, 4])
-plot_slices_of_simulation(results_dict["output_slices"] , [0,1,2,3,4])
+plot_slices_of_simulation(results_dict["output_slices"] , [0,1,2,3,4], burn_masks=results_dict["burned_area_masks"])
 
 # %% 
 # test run_simulation 
-results_dict = run_simulation(m=0.6, L=100, t_steps=10, d=2, init_grass=0.1, init_tree=0.1, p_ig_gmax=0.1, p_ig_tmax=0.02, r_spr_tmax=0.7, r_spr_gmax=0.5, r_cat_tmax=0.3, r_cat_gmax=0.7, output_times=[0, 1, 2, 3, 4])
-plot_slices_of_simulation(results_dict["output_slices"] , [0,1,5,7,9])
+t_steps= 10000
+results_dict = run_simulation(m=0.6, L=100, t_steps=t_steps, d=5, init_grass=0.1, init_tree=0.1, p_ig_gmax=0.1, p_ig_tmax=0.02, r_spr_tmax=0.03, r_spr_gmax=0.05, r_cat_tmax=0.03, r_cat_gmax=0.07, output_times=[0,10, 20, 30, 40, 50, 60])
+plot_slices_of_simulation(results_dict["output_slices"] , [0,10, 20, 30, 40, 50, 60], burn_masks=results_dict["burned_area_masks"])
 
+#%%
+plt.figure(figsize=(12, 6))
+plt.plot(range(t_steps), results_dict['grass_count'], color="yellow", label="Early Vegetation")
+plt.plot(range(t_steps), results_dict['tree_count'], color='green', label="Mature Vegetation")
+plt.plot(range(t_steps), results_dict['area_burned'], color='orange', label="Fire")
+plt.suptitle("Dynamics of simulation over time")
+plt.legend(fontsize="large")
+plt.xlabel("Time steps ('years')")
+plt.ylabel("Units of Vegetation/Fire")
 # %%
 import matplotlib.colors as colors
+
 colors_list = ["black", "yellow", "green"]
 cmap = colors.ListedColormap(colors_list)
 bounds = [0,1,2,3]
@@ -47,3 +58,13 @@ forest = grow_season(forest, params_dict)
 plt.imshow(forest,  cmap=cmap, norm=norm)
 
 # %%
+t_steps = 100
+m = 0.6
+L = 100 
+d = 6
+init_grass = 0.5
+init_tree = 0.5
+p_ig_gmax = 0.02
+p_ig_tmax = 0.03
+results_dict = run_simulation(m=m, L=L, t_steps=t_steps, d=d, init_grass=init_grass, init_tree=init_tree, p_ig_gmax=p_ig_gmax, p_ig_tmax=p_ig_tmax, r_spr_tmax=0.03, r_spr_gmax=0.05, r_cat_tmax=0.03, r_cat_gmax=0.07, output_times=[0,10, 20, 30, 40, 50, 60])
+
