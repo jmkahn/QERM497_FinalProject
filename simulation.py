@@ -10,7 +10,7 @@ ASH = 0
 GRASS = 1
 TREE = 2
 
-def set_probabilities(m, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
+def set_probabilities_old(m, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
     '''
     Creates a dictionary of growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters and moisture levels
     Params: 
@@ -49,6 +49,28 @@ def set_probabilities(m, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_
     # Returns an dict of all the transition probabilities
     return {"p_gro_g": p_gro_g, "p_gro_ag": p_gro_ag, "p_gro_gt": p_gro_gt, "p_ig_g": p_ig_g, "p_ig_t": p_ig_t, "p_spr_gg": p_spr_gg, "p_spr_tg": p_spr_tg, "p_spr_gt": p_spr_gt, "p_spr_tt": p_spr_tt}
 
+def set_probabilities(p_disp, p_gro_ag, p_gro_gt, p_ig_g, p_ig_t, p_spr_gg, p_spr_tg, p_spr_gt, p_spr_tt): 
+    '''
+    Creates a dictionary of input parameters. 
+    growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters
+    Params: 
+        - p_ig_t: (probability that tree cell spontaneously ignites at beginning of season)
+        - p_ig_g: (probability that grass cell spontaneously ignites at beginning of season)
+        - p_disp: (long-range dispersal probability: grass randomly grows in ash or tree randomly grows from grass)
+        - p_gro_ag: probability that grass propagates to neighboring ash site, equal to m 
+        - p_gro_gt: probability that tree propagates to neighboring grass site, equal to m
+        - p_ig_t: (prob of tree ignition) = r_cat_tmax*p_lightning
+        - p_ig_g: (prob of grass ignition) = r_cat_tmax*p_lightning
+        - p_spr_gg: prob of fire spreading from grass to neighboring grass
+        - p_spr_tg: prob of fire spreading from tree to neighboring grass
+        - p_spr_gt: prob of fire spreading from grass to neighboring tree
+        - p_spr_tt: prob of fire spreading from tree to neighboring tree
+    NOTE: probilities are named with the convention "p_[process]_[from state to state]"
+    '''
+    # Returns an dict of all the transition probabilities
+    return {"p_disp": p_disp, "p_gro_ag": p_gro_ag, "p_gro_gt": p_gro_gt, "p_ig_g": p_ig_g, "p_ig_t": p_ig_t, "p_spr_gg": p_spr_gg, "p_spr_tg": p_spr_tg, "p_spr_gt": p_spr_gt, "p_spr_tt": p_spr_tt}
+
+
 def initialize_forest(L, d, init_grass, init_tree): 
     ''' initialize_forest creates the world for the simulation (stored in a 2D array) and populates it with a randomly dispersed initial set of trees and grass. 
     Ash, grass and trees are represented by ints: 0=ash; 1=grass; 2=tree.'''
@@ -75,10 +97,11 @@ def grow_season(forest, params_dict):
     rng = np.random.default_rng()
     d = params_dict['d']
     L = params_dict['L']
-    p_gro_g  = params_dict['p_gro_g']
+    p_disp  = params_dict['p_disp']
     p_gro_ag = params_dict['p_gro_ag'] 
     p_gro_gt = params_dict['p_gro_gt']
 
+    ### Get all cells that grow (either ash -> grass or grass -> tree)
 
     ### propagate grass into ash cells 
     # num_grass_sources = array w number of sources in neighborhood of focal cell
@@ -86,14 +109,12 @@ def grow_season(forest, params_dict):
     # probability of new veg growing in each square is equal to the probability 
     # of at least 1 neighbor propagating to this square 
     # ie the complement of (NO neighbors propagating here)
-    p_grow_grass = 1 - (1-p_gro_ag)**(num_grass_sources) + p_gro_g
-    # add probability of veg randomly seeding there (long-range dispersal
-    # clip at 0, 1
-    p_grow_grass = np.clip((p_grow_grass + p_gro_g), 0, 1)
-
+    p_grow_grass = 1 - (1-p_gro_ag)**(num_grass_sources)
     # roll dice to see if grass grow in any of the ash squares 
     new_grass = np.where(forest==ASH, np.random.binomial(1, p_grow_grass), 0)
-    forest = forest + new_grass # since GRASS = 1 and ASH = 0, can add the new values to forest
+
+
+    # forest = forest + new_grass # since GRASS = 1 and ASH = 0, can add the new values to forest
 
     ### do the same process as above to propagate trees into grass cells
     num_tree_sources = generic_filter(forest, count_equals, size=(2*d-1, 2*d-1), mode='constant', extra_arguments=(TREE, ))
@@ -102,7 +123,16 @@ def grow_season(forest, params_dict):
     # since TREE = 2 and GRASS = 1 and ASH = 0: 
     # adding new value to grass will result in tree; 
     # adding new value to ash will result in grass
-    forest = forest + new_trees 
+
+    # Allow for long-range dispersal at all non-tree cells (where grass randomly becomes 
+    # tree or ash randomly becomes grass, regardless of neighbors)
+    disp_veg = np.where(forest != TREE, np.random.binomial(1, p_disp), 0)
+
+    grow = np.clip((new_grass + new_trees + disp_veg), 0, 1)
+
+    # Add all new veg, but only allow to increment one step in a year (ash must become grass before tree)
+    forest = forest + np.clip((new_trees + new_grass + disp_veg), 0, 1)
+
 
     # make the buffer stay ash
     forest[0:d, ] = ASH # top strip
@@ -213,17 +243,19 @@ def fire_season(forest, params_dict):
     # Return world at next time step (and optional data) 
     return forest, area_burned, indices_burned
 
-def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
+def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_disp, p_gro_ag, p_gro_gt, p_ig_g, p_ig_t, p_spr_gg, p_spr_tg, p_spr_gt, p_spr_tt): 
     '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
     around through the simulation''' 
     params_dict = {'m': m, 'L' : L, 'd' : d}
-    probs_dict = set_probabilities(m=m, 
-                                   p_gro_gmax=p_gro_gmax,
-                                   p_lightning=p_lightning,
-                                   r_spr_tmax=r_spr_tmax, 
-                                   r_spr_gmax=r_spr_gmax, 
-                                   r_cat_tmax=r_cat_tmax, 
-                                   r_cat_gmax=r_cat_gmax) # Set all the probabilities based on moisture levels 
+    probs_dict = set_probabilities( p_disp=p_disp, 
+                                    p_gro_ag=p_gro_ag, 
+                                    p_gro_gt=p_gro_gt, 
+                                    p_ig_g=p_ig_g, 
+                                    p_ig_t=p_ig_t, 
+                                    p_spr_gg=p_spr_gg, 
+                                    p_spr_tg=p_spr_tg, 
+                                    p_spr_gt=p_spr_gt, 
+                                    p_spr_tt=p_spr_tt) # Set all the probabilities based on moisture levels 
     params_dict.update(probs_dict) 
     return params_dict
 
@@ -247,7 +279,7 @@ def mask_burned_indices(burn_indices, dim):
     return mask 
 
 
-def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax, output_times=[]): 
+def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_gro_ag, p_gro_gt, p_ig_g, p_ig_t, p_spr_gg, p_spr_tg, p_spr_gt, p_spr_tt, output_times=[]): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
         - m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
@@ -280,12 +312,15 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_lightn
                                          d=d, 
                                          init_grass=init_grass, 
                                          init_tree=init_tree, 
-                                         p_lightning=p_lightning,
-                                         p_gro_gmax=p_gro_gmax,
-                                         r_spr_tmax=r_spr_tmax, 
-                                         r_spr_gmax=r_spr_gmax, 
-                                         r_cat_tmax=r_cat_tmax, 
-                                         r_cat_gmax=r_cat_tmax)
+                                         p_disp=p_disp, 
+                                         p_gro_ag=p_gro_ag, 
+                                         p_gro_gt=p_gro_gt, 
+                                         p_ig_g=p_ig_g, 
+                                         p_ig_t=p_ig_t, 
+                                         p_spr_gg=p_spr_gg, 
+                                         p_spr_tg=p_spr_tg, 
+                                         p_spr_gt=p_spr_gt, 
+                                         p_spr_tt=p_spr_tt)
     
     save_counter = 0 # save state data at select times 
     output_slices = np.zeros((len(2*output_times), (L+2*d), (L+2*d)))
@@ -317,7 +352,8 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_gro_gmax, p_lightn
             output_slices[save_counter] = forest
             save_counter += 1
             
-    return {"output_slices": output_slices, 
+    return {"output_times": output_times, 
+            "output_slices": output_slices, 
             "burned_area_masks" : area_burned_mask,
             "area_burned": area_burned_output, 
             "tree_count": tree_count, 
