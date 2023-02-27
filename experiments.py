@@ -3,8 +3,46 @@
 
 # %%
 from simulation import *
-from viz import plot_slices_of_simulation, veg_fire_over_time
+from viz import plot_slices_of_simulation, veg_fire_over_time, plot_slices_of_simulation_biomass
 import matplotlib.pyplot as plt
+
+# %% 
+# Test with new biomass version
+# Params
+m = 0.5 # placeholder, not used. 
+L = 10
+time_steps = 10
+d = 2
+init_grass=0.4 
+init_tree=0.5
+p_disp=.01
+p_prop=0.1
+min_seed=20
+r_grow=0.01
+tree_carrying_capacity = 10
+neighborhood_carrying_capacity = 150
+max_ignite=0.1
+output_times=[0,2,4,6,8]
+
+results_dict = run_simulation(m=m, 
+               L=L, 
+               t_steps=time_steps, 
+               d=d, 
+               init_grass=init_grass, 
+               init_tree=init_tree, 
+               p_disp=p_disp, 
+               p_prop=p_prop, 
+               min_seed=min_seed, 
+               r_grow=r_grow, 
+               tree_carrying_capacity=tree_carrying_capacity,
+               neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+               max_ignite=max_ignite, 
+               output_times=output_times)
+plot_slices_of_simulation_biomass(results_dict=results_dict, plot_burn_masks=False)
+
+# %%
+slices = results_dict['output_slices']
+
 
 # %%
 # results_dict = run_simulation(m=0.4, L=50, t_steps=50, d=2, init_grass=0.1, init_tree=0.1, p_gro_gmax = 0.02, p_lightning=0.01, r_spr_tmax=1, r_spr_gmax=0.8, r_cat_tmax=0.4, r_cat_gmax=1, output_times=[0, 10, 20, 30, 49])
