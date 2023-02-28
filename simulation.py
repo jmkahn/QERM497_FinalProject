@@ -3,7 +3,10 @@ This module gives the code to simulate a forest fire [#TODO: add description]
 Written by J Kahn and Helen Miller 
 '''
 import numpy as np 
+
 from scipy.ndimage import generic_filter
+
+from viz import get_patch_sizes
 
 
 ASH = 0 
@@ -280,11 +283,14 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
     output_slices = np.zeros((len(2*output_times), (L+2*d), (L+2*d)))
 
     # initialize some key things to save at every time point
-    area_burned_mask = np.zeros((t_steps, (L+2*d), (L+2*d)))
+    burned_area_masks = np.zeros((t_steps, (L+2*d), (L+2*d)))
     area_burned_output = np.zeros(t_steps)
     total_biomass = np.zeros(t_steps)
+    avg_patch_size = np.zeros(t_steps)
+    std_patch_size = np.zeros(t_steps)
+
     for t in range(t_steps): 
-        forest = grow_season(forest, params_dict) #TODO: return data?
+        forest = grow_season(forest, params_dict)
 
         # save select outputs pre-fire 
         if t in output_times: 
@@ -293,20 +299,27 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
 
         forest, area_burned, indices_burned = fire_season(forest, params_dict)
 
-        # todo: make indices_burned into an np array mask that can be applied over the state
         # Save outputs which get recorded every year
         area_burned_output[t] = area_burned
         total_biomass[t] = np.sum(forest)
 
+        all_patch_sizes = get_patch_sizes(forest.astype(bool), neighboorhood="moore") #casting forest to a bool array makes veg (>0) be "True" and ash (0) be "False"
+        avg_patch_size[t] = np.mean(all_patch_sizes)
+        std_patch_size[t] = np.std(all_patch_sizes)
+
         # Save select outputs post-fire 
         if t in output_times: 
             output_slices[save_counter] = forest
-            area_burned_mask[save_counter] = mask_burned_indices(indices_burned, L+2*d)
+            burned_area_masks[save_counter] = mask_burned_indices(indices_burned, L+2*d)
             save_counter += 1
+
+    # TODO: mean + std dev of biomass 
             
     return {"output_times": output_times, 
             "output_slices": output_slices, 
-            "burned_area_masks" : area_burned_mask,
+            "burned_area_masks" : burned_area_masks,
             "area_burned": area_burned_output, 
             "biomass": total_biomass,
+            "avg_patch_size": avg_patch_size, 
+            "std_patch_size": std_patch_size, 
             "params_dict": params_dict}

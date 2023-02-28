@@ -1,5 +1,8 @@
+import numpy as np
 from matplotlib import colors
 import matplotlib.pyplot as plt
+from scipy import ndimage
+
 def plot_slices_of_simulation(results_dict, title = "", plot_burn_masks=True):
     '''Params: 
         times: a list of time steps 
@@ -220,7 +223,6 @@ def plot_slices_of_simulation_biomass(results_dict, title = "", plot_burn_masks=
         fig.suptitle("State of simulation at various time steps")
     return fig, ax
 
-from scipy import ndimage
 def get_patch_sizes(bin_array, neighboorhood="moore"): 
     """Get an array of patch sizes from a binary array, where a patch 
     is a set of neighboring True cells. 
