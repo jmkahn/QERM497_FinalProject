@@ -279,9 +279,129 @@ results_dict_4 = run_simulation(m=m,
                neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
                max_ignite=max_ignite, 
                output_times=output_times)
-plot_results(results_dict_3, title="experiment 4", filename="exp4")
+plot_results(results_dict_4, title="experiment 4", filename="exp4")
 
 # %%
+# same as above but with different initial conditions
+init_grass=0 
+init_tree=1
+p_disp=.05
+p_prop=0.1
+min_seed=20
+r_grow=0.2
+tree_carrying_capacity = 100
+neighborhood_carrying_capacity = 500
+max_ignite=0.01
+output_times=[0,100,200,300,400,499]
+
+
+results_dict_5 = run_simulation(m=m, 
+               L=L, 
+               t_steps=time_steps, 
+               d=d, 
+               init_grass=init_grass, 
+               init_tree=init_tree, 
+               p_disp=p_disp, 
+               p_prop=p_prop, 
+               min_seed=min_seed, 
+               r_grow=r_grow, 
+               tree_carrying_capacity=tree_carrying_capacity,
+               neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+               max_ignite=max_ignite, 
+               output_times=output_times)
+plot_results(results_dict_5, title="experiment 5", filename="exp5")
+# %%
+# same as above but with very big neighborhood cc
+init_grass=0 
+init_tree=1
+p_disp=.05
+p_prop=0.1
+min_seed=20
+r_grow=0.2
+tree_carrying_capacity = 100
+neighborhood_carrying_capacity = tree_carrying_capacity*90
+max_ignite=0.01
+output_times=[0,100,200,300,400,499]
+
+
+results_dict_6 = run_simulation(m=m, 
+               L=L, 
+               t_steps=time_steps, 
+               d=d, 
+               init_grass=init_grass, 
+               init_tree=init_tree, 
+               p_disp=p_disp, 
+               p_prop=p_prop, 
+               min_seed=min_seed, 
+               r_grow=r_grow, 
+               tree_carrying_capacity=tree_carrying_capacity,
+               neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+               max_ignite=max_ignite, 
+               output_times=output_times)
+plot_results(results_dict_6, title="experiment 6", filename="exp6")
+
+# %% 
+# same as 5 but with even lower probability of ignition
+init_grass=0 
+init_tree=1
+p_disp=.05
+p_prop=0.1
+min_seed=20
+r_grow=0.2
+tree_carrying_capacity = 100
+neighborhood_carrying_capacity = 500
+max_ignite=0.004
+output_times=[0,100,200,300,400,499]
+
+
+results_dict_7 = run_simulation(m=m, 
+               L=L, 
+               t_steps=time_steps, 
+               d=d, 
+               init_grass=init_grass, 
+               init_tree=init_tree, 
+               p_disp=p_disp, 
+               p_prop=p_prop, 
+               min_seed=min_seed, 
+               r_grow=r_grow, 
+               tree_carrying_capacity=tree_carrying_capacity,
+               neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+               max_ignite=max_ignite, 
+               output_times=output_times)
+plot_results(results_dict_7, title="experiment 7", filename="exp7")
+
+# %%
+# Same as above but with lower growth rate
+# (run for longer because takes longer to reach eq)
+time_steps=1000
+init_grass=0 
+init_tree=1
+p_disp=.05
+p_prop=0.1
+min_seed=20
+r_grow=0.05
+tree_carrying_capacity = 100
+neighborhood_carrying_capacity = 500
+max_ignite=0.004
+output_times=[0,200,400,600,800,999]
+
+
+results_dict_8 = run_simulation(m=m, 
+               L=L, 
+               t_steps=time_steps, 
+               d=d, 
+               init_grass=init_grass, 
+               init_tree=init_tree, 
+               p_disp=p_disp, 
+               p_prop=p_prop, 
+               min_seed=min_seed, 
+               r_grow=r_grow, 
+               tree_carrying_capacity=tree_carrying_capacity,
+               neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+               max_ignite=max_ignite, 
+               output_times=output_times)
+plot_results(results_dict_8, title="experiment 8", filename="exp8")
+
 # results_dict = run_simulation(m=0.4, L=50, t_steps=50, d=2, init_grass=0.1, init_tree=0.1, p_gro_gmax = 0.02, p_lightning=0.01, r_spr_tmax=1, r_spr_gmax=0.8, r_cat_tmax=0.4, r_cat_gmax=1, output_times=[0, 10, 20, 30, 49])
 # plot_slices_of_simulation(results_dict["output_slices"] , [0,1,2,3,4], burn_masks=results_dict["burned_area_masks"])
 
