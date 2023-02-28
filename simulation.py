@@ -10,65 +10,18 @@ ASH = 0
 GRASS = 1
 TREE = 2
 
-def set_probabilities_old(m, p_gro_gmax, p_lightning, r_spr_tmax, r_spr_gmax, r_cat_tmax, r_cat_gmax): 
-    '''
-    Creates a dictionary of growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters and moisture levels
-    Params: 
-        - m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
-        - p_ig_gmax : (float) Maximum probability of spontaneous grass ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
-        - p_ig_tmax : (float) Maximum probability of spontaneous tree ignition (when moisture=0) (p_ig_tmax < p_ig_gmax)
-
-    Generates the following parameters as a function of the input parameters: 
-        - r_gro_g: (probability that grass spontaneously grows in an ash site)j = p_grow_gmax*m
-        - p_gro_ag: probability that grass propagates to neighboring ash site, equal to m 
-        - p_gro_gt: probability that tree propagates to neighboring grass site, equal to m
-        - p_ig_t: (prob of tree ignition) = r_cat_tmax*p_lightning
-        - p_ig_g: (prob of grass ignition) = r_cat_tmax*p_lightning
-        - p_spr_gg: prob of fire spreading from grass to neighboring grass
-        - p_spr_tg: prob of fire spreading from tree to neighboring grass
-        - p_spr_gt: prob of fire spreading from grass to neighboring tree
-        - p_spr_tt: prob of fire spreading from tree to neighboring tree
-    NOTE: probilities are named with the convention "p_[process]_[from state to state]"
-    '''
-    # Growth rates vary proportionately with moisture level  
-    p_gro_g  = m*p_gro_gmax
-    p_gro_ag = m
-    p_gro_gt = m
-
-    # Ignition probabilities vary inversely with moisture level 
-    p_ig_g = r_cat_tmax*(1-m)*p_lightning #*(1 - m)
-    p_ig_t = r_cat_gmax*(1-m)*p_lightning #*(1 - m) #TODO: add in moisture dependence later 
-
-    # Fire spread between neighbors depends on moisture and state each cell 
-    # Multiply (rate of spread) times (rate of catching) for each combination of (grass, tree) to get probabilities of fire spreading between trees and grass 
-    p_spr_gg = r_spr_gmax* r_cat_gmax *(1-m)**2 #TODO: add moisture dependence 
-    p_spr_tg = r_spr_tmax* r_cat_gmax *(1-m)**2
-    p_spr_gt = r_spr_gmax* r_cat_tmax *(1-m)**2
-    p_spr_tt = r_spr_tmax* r_cat_tmax *(1-m)**2
-
-    # Returns an dict of all the transition probabilities
-    return {"p_gro_g": p_gro_g, "p_gro_ag": p_gro_ag, "p_gro_gt": p_gro_gt, "p_ig_g": p_ig_g, "p_ig_t": p_ig_t, "p_spr_gg": p_spr_gg, "p_spr_tg": p_spr_tg, "p_spr_gt": p_spr_gt, "p_spr_tt": p_spr_tt}
-
-def set_probabilities(p_disp, p_gro_ag, p_gro_gt, p_ig_g, p_ig_t, p_spr_gg, p_spr_tg, p_spr_gt, p_spr_tt): 
-    '''
-    Creates a dictionary of input parameters. 
-    growth, spontaneous ignition, and fire spread probabilities for grass and trees based the input parameters
-    Params: 
-        - p_ig_t: (probability that tree cell spontaneously ignites at beginning of season)
-        - p_ig_g: (probability that grass cell spontaneously ignites at beginning of season)
-        - p_disp: (long-range dispersal probability: grass randomly grows in ash or tree randomly grows from grass)
-        - p_gro_ag: probability that grass propagates to neighboring ash site, equal to m 
-        - p_gro_gt: probability that tree propagates to neighboring grass site, equal to m
-        - p_ig_t: (prob of tree ignition) = r_cat_tmax*p_lightning
-        - p_ig_g: (prob of grass ignition) = r_cat_tmax*p_lightning
-        - p_spr_gg: prob of fire spreading from grass to neighboring grass
-        - p_spr_tg: prob of fire spreading from tree to neighboring grass
-        - p_spr_gt: prob of fire spreading from grass to neighboring tree
-        - p_spr_tt: prob of fire spreading from tree to neighboring tree
-    NOTE: probilities are named with the convention "p_[process]_[from state to state]"
-    '''
-    # Returns an dict of all the transition probabilities
-    return {"p_disp": p_disp, "p_gro_ag": p_gro_ag, "p_gro_gt": p_gro_gt, "p_ig_g": p_ig_g, "p_ig_t": p_ig_t, "p_spr_gg": p_spr_gg, "p_spr_tg": p_spr_tg, "p_spr_gt": p_spr_gt, "p_spr_tt": p_spr_tt}
+# TODO: set seed
+# TODO: animate
+# TODO: get recurrence interval
+# TODO: Save outputs to csv
+# TODO: change color scheme
+# TODO: find some relevant literature
+# TODO: run some parameter sweeps on: 
+    # * neighborhood CC (in relationship to tree cc)
+    # * growth rate
+    # * carrying capacity
+    # * ignition probability
+    # collect data on mean and sd of biomass (from 200-100 years or something)
 
 def set_probabilities_biomass(p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite): 
     '''
@@ -201,6 +154,7 @@ def fire_season(forest, params_dict):
     ignition_probs.resize(L,L)
     # Probability of igniting is max_ignite/biomass
     ignition_probability = max_ignite / forest[d:-d, d:-d]
+    # no ignitions at ash sites
     ignition_probability[forest[d:-d, d:-d] == 0] = 0
     ignitions = ignition_probs < ignition_probability
     

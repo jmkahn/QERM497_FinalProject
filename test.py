@@ -97,3 +97,54 @@ p_ig_gmax = 0.02
 p_ig_tmax = 0.03
 results_dict = run_simulation(m=m, L=L, t_steps=t_steps, d=d, init_grass=init_grass, init_tree=init_tree, p_ig_gmax=p_ig_gmax,
                               p_ig_tmax=p_ig_tmax, r_spr_tmax=0.03, r_spr_gmax=0.05, r_cat_tmax=0.03, r_cat_gmax=0.07, output_times=[0, 10, 20, 30, 40, 50, 60])
+# %% 
+# TEST biomass
+m = 0.5 # placeholder, not used. 
+L = 10
+time_steps = 500
+output_times = [0,1,2,30,49]
+d = 2
+init_grass=0.1 
+init_tree=0.1
+p_disp=-.01
+p_prop=0.1
+min_seed=20
+r_grow=0.5
+max_grow=500
+max_ignite=0.01
+# %%
+
+forest = initialize_forest(L, d, init_grass=1, init_tree=0)
+params_dict = initialize_params_dict(m=m, 
+                                         L=L, 
+                                         t_steps=time_steps, 
+                                         d=d, 
+                                         init_grass=init_grass, 
+                                         init_tree=init_tree, 
+                                         p_disp=p_disp, 
+                                   p_prop=p_prop,
+                                   min_seed=min_seed,
+                                    r_grow=r_grow, 
+                                    tree_carrying_capacity=50,
+                                    neighborhood_carrying_capacity=150, 
+                                    max_ignite=max_ignite)
+
+forest = grow_season(forest, params_dict)
+
+# %% 
+# viz biomass forest
+from matplotlib import colors
+forest = np.load("forest_biomass.npy")
+
+fig = plt.figure()
+ax = fig.add_subplot()
+ax.xaxis.set_visible(False)
+ax.yaxis.set_visible(False)
+imshow1 = ax.imshow(forest, vmin=1, vmax=50*1.2)
+colors_list = ["black", "white"]
+cmap = colors.ListedColormap(colors_list)
+bounds = [0, 1,2]
+norm = colors.BoundaryNorm(bounds, cmap.N)
+forest_ash = (forest == 0).astype(float)
+ax.imshow(forest_ash, alpha=forest_ash, cmap = "orange")
+plt.show()
