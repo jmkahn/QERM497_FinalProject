@@ -40,10 +40,12 @@ def set_probabilities_biomass(p_disp, p_prop, min_seed, r_grow, tree_carrying_ca
     return {"p_disp": p_disp, "p_prop": p_prop, "min_seed": min_seed, "r_grow": r_grow, "tree_carrying_capacity": tree_carrying_capacity, "neighborhood_carrying_capacity": neighborhood_carrying_capacity, "max_ignite": max_ignite}
 
 
-def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite): 
+def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, rand_seed): 
     '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
     around through the simulation''' 
-    params_dict = {'m': m, 'L' : L, 'd' : d}
+    rng = np.random.default_rng(seed=rand_seed) #initialize a random number generator to create replicable results
+    params_dict = {'m': m, 'L' : L, 'd' : d, 'rng': rng}
+
     probs_dict = set_probabilities_biomass( p_disp=p_disp, 
                                    p_prop=p_prop,
                                    min_seed=min_seed,
@@ -54,12 +56,12 @@ def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_disp, p_pr
     params_dict.update(probs_dict) 
     return params_dict
 
-def initialize_forest(L, d, init_grass, init_tree): 
+def initialize_forest(L, d, init_grass, init_tree, rng): 
     ''' initialize_forest creates the world for the simulation (stored in a 2D array) and populates it with a randomly dispersed initial set of trees and grass. 
     Ash, grass and trees are represented by ints: 0=ash; 1=grass; 2=tree.'''
     # create (L+2d)x(L+2d) array(forest)
     # Randomly populate forest with trees and grass based on initial conditions
-    forest = np.random.choice([ASH, GRASS, TREE],
+    forest = rng.choice([ASH, GRASS, TREE],
                               size=(L+2*d,L+2*d), 
                               p=[1-(init_tree+init_grass), init_grass, init_tree])
 
@@ -73,7 +75,6 @@ def initialize_forest(L, d, init_grass, init_tree):
 def count_equals(arr, val): 
     return np.count_nonzero(arr == val)
 
-
 def grow_season(forest, params_dict):
     '''grow_season runs one iteration of the world in which new vegetation grows'''
     # set up tools + get parameters 
@@ -85,6 +86,7 @@ def grow_season(forest, params_dict):
     tree_carrying_capacity = params_dict['tree_carrying_capacity']
     neighborhood_carrying_capacity = params_dict['neighborhood_carrying_capacity']
     min_seed = params_dict['min_seed']
+    rng = params_dict['rng']
 
     ### Get all cells where vegetation seeds
     # count sources of maturation age
@@ -106,7 +108,7 @@ def grow_season(forest, params_dict):
     num_propogation_sources = generic_filter(forest > min_seed, np.sum, size = (2*d-1, 2*d-1), mode="constant")
     p_seed = 1 - (1-p_prop) ** num_propogation_sources
     p_seed = np.clip((p_disp + p_seed), 0, 1)
-    new_veg = np.where(forest == 0, np.random.binomial(1, p_seed), 0)
+    new_veg = np.where(forest == 0, rng.binomial(1, p_seed), 0)
 
     forest = forest + new_veg + new_grow
 
@@ -127,6 +129,7 @@ def fire_season(forest, params_dict):
     d=params_dict["d"]
     max_ignite = params_dict['max_ignite']
     tree_carrying_capacity = params_dict['tree_carrying_capacity']
+    rng = params_dict['rng']
     # Create two lists: 
     # Fire_location = list of locations of currently on-fire cells in grid
     fire_location=[]
@@ -153,7 +156,7 @@ def fire_season(forest, params_dict):
     # -----FIRE SEASON STARTS----- #
     ### IGNITION
     # Randomly select some of the vegetation cells to ignite and add to the lists 
-    ignition_probs = np.random.rand(L*L)
+    ignition_probs = rng.random(L*L)
     ignition_probs.resize(L,L)
     # Probability of igniting is max_ignite/biomass
     ignition_probability = max_ignite / forest[d:-d, d:-d]
@@ -191,7 +194,7 @@ def fire_season(forest, params_dict):
 
         # Probability of ignition = (biomass_source / biomass_target) / tree_carrying_capacity * biomass_source
         
-        fire_probs = np.random.rand(len(foliage_neighbors))
+        fire_probs = rng.random(len(foliage_neighbors))
 
         for i, neighbor in enumerate(foliage_neighbors): 
             p_ignite = (biomass**2 / neighbor) / tree_carrying_capacity
@@ -229,7 +232,7 @@ def mask_burned_indices(burn_indices, dim):
     return mask 
 
 
-def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, output_times=[]): 
+def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, output_times=[], rand_seed=None): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
         - m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
@@ -244,6 +247,7 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
         - r_cat_gmax : (float) Max rate at which grass catches fire from nearby source (r_cat_tmax < r_cat_gmax)
         - init_tree : (float) Initial proportion of tree cover (0 to 1; init_tree + init_grass <= 1) 
         - init_grass : (float) Initial proportion of grass cover (0 to 1; init_tree + init_grass <= 1)
+        - rand_seed : (optional) integer seed for replicable random results 
 
     Returns:
         - dict with results + data: 
@@ -252,10 +256,6 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
             - tree_count: array, each element indicates number of tree cells in forest after fire season each year 
             - grass_count: array, each element indicates number of grass cells in forest after fire season each year 
     '''
-    forest = initialize_forest(L=L, 
-                               d=d, 
-                               init_grass=init_grass, 
-                               init_tree=init_tree)
     params_dict = initialize_params_dict(m=m, 
                                          L=L, 
                                          t_steps=t_steps, 
@@ -268,8 +268,14 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
                                     r_grow=r_grow, 
                                     tree_carrying_capacity=tree_carrying_capacity,
                                     neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
-                                    max_ignite=max_ignite)
-    
+                                    max_ignite=max_ignite,
+                                    rand_seed=rand_seed)
+    forest = initialize_forest(L=L, 
+                            d=d, 
+                            init_grass=init_grass, 
+                            init_tree=init_tree,
+                            rng=params_dict['rng'])
+
     save_counter = 0 # save state data at select times 
     output_slices = np.zeros((len(2*output_times), (L+2*d), (L+2*d)))
 
