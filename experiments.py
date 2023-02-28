@@ -127,6 +127,27 @@ def plot_results(results_dict, title, filename):
         ax[i].title.set_text("year = "+str(times[i]))
     fig.suptitle(title+": Distribution of patch sizes (log-log)")
     fig.savefig("plots/"+filename+"-patches.png")
+
+    # Get distribution of biomass between cells
+    fig = plt.figure()
+    fig, ax = plt.subplots(nrows=1, ncols=len(times), figsize=(25,4))
+    for i, t in enumerate(times): 
+        biomass_counts = np.histogram(results_dict['output_slices'][2*i+1][d:-d,d:-d], bins=50)
+        ax[i].scatter(np.log(biomass_counts[1][:-1]), np.log(biomass_counts[0],))
+        ax[i].title.set_text("year = "+str(times[i]))
+    fig.suptitle(title+": Distribution of biomass (log-log)")
+    fig.savefig("plots/"+filename+"-biomass-dist.png")
+
+    # Get distribution of area burned from year to year
+    fig = plt.figure()
+    # Only plot after 100 years (burn-out period)
+    plt.hist(results_dict['area_burned'][100:], bins=30, color="orange")
+    plt.title(title+": Distribution of area burned per year")
+    plt.xlabel("cells burned")
+    plt.ylabel("count")
+    fig.savefig("plots/"+filename+"-burned-dist.png")
+    
+    
 # %% 
 # Test with new biomass version
 # Params
@@ -229,7 +250,36 @@ results_dict_3 = run_simulation(m=m,
                output_times=output_times)
 plot_results(results_dict_3, title="experiment 3", filename="exp3")
 
-np.unique(results_dict_3['output_slices'][11][d:-d,d:-d].flatten(), return_counts=True)
+
+# %% 
+# Now changing both carrying capacity and ignition prob
+init_grass=0.2 
+init_tree=0.1
+p_disp=.05
+p_prop=0.1
+min_seed=20
+r_grow=0.2
+tree_carrying_capacity = 100
+neighborhood_carrying_capacity = 500
+max_ignite=0.01
+output_times=[0,100,200,300,400,499]
+
+
+results_dict_4 = run_simulation(m=m, 
+               L=L, 
+               t_steps=time_steps, 
+               d=d, 
+               init_grass=init_grass, 
+               init_tree=init_tree, 
+               p_disp=p_disp, 
+               p_prop=p_prop, 
+               min_seed=min_seed, 
+               r_grow=r_grow, 
+               tree_carrying_capacity=tree_carrying_capacity,
+               neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+               max_ignite=max_ignite, 
+               output_times=output_times)
+plot_results(results_dict_3, title="experiment 4", filename="exp4")
 
 # %%
 # results_dict = run_simulation(m=0.4, L=50, t_steps=50, d=2, init_grass=0.1, init_tree=0.1, p_gro_gmax = 0.02, p_lightning=0.01, r_spr_tmax=1, r_spr_gmax=0.8, r_cat_tmax=0.4, r_cat_gmax=1, output_times=[0, 10, 20, 30, 49])
