@@ -152,12 +152,7 @@ def grow_season(forest, params_dict):
     p_seed = np.clip((p_disp + p_seed), 0, 1)
     new_veg = np.where(forest == 0, np.random.binomial(1, p_seed), 0)
 
-    forest2 = forest + new_veg + new_grow
-    if np.isnan(np.max(forest2)):
-        print("break")
-        return forest
-    else: 
-        forest = forest2
+    forest = forest + new_veg + new_grow
 
     # make the buffer stay ash
     forest[0:d, ] = ASH # top strip
@@ -206,6 +201,7 @@ def fire_season(forest, params_dict):
     ignition_probs.resize(L,L)
     # Probability of igniting is max_ignite/biomass
     ignition_probability = max_ignite / forest[d:-d, d:-d]
+    ignition_probability[forest[d:-d, d:-d] == 0] = 0
     ignitions = ignition_probs < ignition_probability
     
     ### end fire season if there were no ignitions 
@@ -323,10 +319,8 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
     # initialize some key things to save at every time point
     area_burned_mask = np.zeros((t_steps, (L+2*d), (L+2*d)))
     area_burned_output = np.zeros(t_steps)
-    tree_count = np.zeros(t_steps)
-    grass_count = np.zeros(t_steps)
+    total_biomass = np.zeros(t_steps)
     for t in range(t_steps): 
-        print(str(t))
         forest = grow_season(forest, params_dict) #TODO: return data?
 
         # save select outputs pre-fire 
@@ -339,19 +333,17 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
         # todo: make indices_burned into an np array mask that can be applied over the state
         # Save outputs which get recorded every year
         area_burned_output[t] = area_burned
-        area_burned_mask[t] = mask_burned_indices(indices_burned, L+2*d)
-        tree_count[t] = np.sum(forest == TREE)
-        grass_count[t] = np.sum(forest == GRASS)
+        total_biomass[t] = np.sum(forest)
 
         # Save select outputs post-fire 
         if t in output_times: 
             output_slices[save_counter] = forest
+            area_burned_mask[save_counter] = mask_burned_indices(indices_burned, L+2*d)
             save_counter += 1
             
     return {"output_times": output_times, 
             "output_slices": output_slices, 
             "burned_area_masks" : area_burned_mask,
             "area_burned": area_burned_output, 
-            "tree_count": tree_count, 
-            "grass_count": grass_count, 
+            "biomass": total_biomass,
             "params_dict": params_dict}
