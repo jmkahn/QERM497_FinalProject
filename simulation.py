@@ -12,7 +12,10 @@ TREE = 2
 
 # TODO: set seed
 # TODO: animate
-# TODO: get recurrence interval
+# TODO: get recurrence interval (stretch goal)
+# TODO: save outputs for experiments: 
+    # * mean and standard deviation of total biomass (after burn-out period)
+    # * mean and standard deviation of patch size (after burn-out period)
 # TODO: Save outputs to csv
 # TODO: change color scheme
 # TODO: find some relevant literature
@@ -21,7 +24,7 @@ TREE = 2
     # * growth rate
     # * carrying capacity
     # * ignition probability
-    # collect data on mean and sd of biomass (from 200-100 years or something)
+    # collect data on mean and sd of biomass and patch size (from 200-100 years or something)
 
 def set_probabilities_biomass(p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite): 
     '''
