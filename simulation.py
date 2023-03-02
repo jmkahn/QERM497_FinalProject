@@ -313,13 +313,11 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
             burned_area_masks[save_counter] = mask_burned_indices(indices_burned, L+2*d)
             save_counter += 1
 
-    # TODO: mean + std dev of biomass 
-            
     return {"output_times": output_times, 
             "output_slices": output_slices, 
             "burned_area_masks" : burned_area_masks,
-            "area_burned": area_burned_output, 
-            "biomass": total_biomass,
             "avg_patch_size": avg_patch_size, 
             "std_patch_size": std_patch_size, 
+            "biomass": total_biomass,
+            "area_burned": area_burned_output, 
             "params_dict": params_dict}
