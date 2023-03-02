@@ -148,3 +148,43 @@ norm = colors.BoundaryNorm(bounds, cmap.N)
 forest_ash = (forest == 0).astype(float)
 ax.imshow(forest_ash, alpha=forest_ash, cmap = "orange")
 plt.show()
+
+# %%
+# TEST experiments
+from simulation import run_simulation
+m = 0.5 # placeholder, not used. 
+L = 50
+time_steps = 500
+d = 4
+init_grass=0.2 
+init_tree=0.1
+p_disp=.05
+p_prop=0.1
+min_seed=10
+r_grow=0.2
+tree_carrying_capacity = 100
+neighborhood_carrying_capacity = 500
+max_ignite=0.01
+r_seed = 12345
+
+results_dict = run_simulation(m=m, 
+                L=L, 
+                t_steps=time_steps, 
+                d=d, 
+                init_grass=init_grass, 
+                init_tree=init_tree, 
+                p_disp=p_disp, 
+                p_prop=p_prop, 
+                min_seed=min_seed, 
+                r_grow=r_grow, 
+                tree_carrying_capacity=tree_carrying_capacity,
+                neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+                max_ignite=max_ignite,
+                rand_seed=r_seed)
+
+# %%
+import matplotlib.pyplot as plt
+import numpy as np
+plt.scatter(np.log(results_dict['num_patches']), np.log(results_dict['avg_patch_size']))
+m, b = np.polyfit(np.log(results_dict['num_patches']), np.log(results_dict['avg_patch_size']), 1)
+plt.plot(np.log(results_dict['num_patches']), m*(np.log(results_dict['num_patches'])) + b, color = "red")

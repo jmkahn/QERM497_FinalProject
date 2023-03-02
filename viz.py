@@ -1,6 +1,8 @@
 import numpy as np
 from matplotlib import colors
 import matplotlib.pyplot as plt
+import numpy as np
+
 from scipy import ndimage
 
 def plot_slices_of_simulation(results_dict, title = "", plot_burn_masks=True):

@@ -3,9 +3,7 @@ This module gives the code to simulate a forest fire [#TODO: add description]
 Written by J Kahn and Helen Miller 
 '''
 import numpy as np 
-
 from scipy.ndimage import generic_filter
-
 from viz import get_patch_sizes
 
 
@@ -43,10 +41,9 @@ def set_probabilities_biomass(p_disp, p_prop, min_seed, r_grow, tree_carrying_ca
     return {"p_disp": p_disp, "p_prop": p_prop, "min_seed": min_seed, "r_grow": r_grow, "tree_carrying_capacity": tree_carrying_capacity, "neighborhood_carrying_capacity": neighborhood_carrying_capacity, "max_ignite": max_ignite}
 
 
-def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, rand_seed): 
+def initialize_params_dict(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, rng): 
     '''convenience function that puts all the given and calculated parameters into a dictionary, which gets passed 
     around through the simulation''' 
-    rng = np.random.default_rng(seed=rand_seed) #initialize a random number generator to create replicable results
     params_dict = {'m': m, 'L' : L, 'd' : d, 'rng': rng}
 
     probs_dict = set_probabilities_biomass( p_disp=p_disp, 
@@ -235,7 +232,7 @@ def mask_burned_indices(burn_indices, dim):
     return mask 
 
 
-def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, output_times=[], rand_seed=None): 
+def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, output_times=[], rng=None): 
     ''' run_simulation is the wrapper function which initializes the simulation and runs it for a specified number of growth and fire seasons
     Params:  
         - m : (float) Moisture level (fundamental parameter dictating probabilities of growth and fire spread) (can vary between 0 and 1, where 0 is no moisture and 1 is total saturation) 
@@ -271,8 +268,8 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
                                     r_grow=r_grow, 
                                     tree_carrying_capacity=tree_carrying_capacity,
                                     neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
-                                    max_ignite=max_ignite,
-                                    rand_seed=rand_seed)
+                                    max_ignite=max_ignite, 
+                                    rng = rng)
     forest = initialize_forest(L=L, 
                             d=d, 
                             init_grass=init_grass, 
@@ -287,7 +284,9 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
     area_burned_output = np.zeros(t_steps)
     total_biomass = np.zeros(t_steps)
     avg_patch_size = np.zeros(t_steps)
+    med_patch_size = np.zeros(t_steps)
     std_patch_size = np.zeros(t_steps)
+    num_patches    = np.zeros(t_steps)
 
     for t in range(t_steps): 
         forest = grow_season(forest, params_dict)
@@ -304,7 +303,9 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
         total_biomass[t] = np.sum(forest)
 
         all_patch_sizes = get_patch_sizes(forest.astype(bool), neighboorhood="moore") #casting forest to a bool array makes veg (>0) be "True" and ash (0) be "False"
+        num_patches[t] = len(all_patch_sizes)
         avg_patch_size[t] = np.mean(all_patch_sizes)
+        med_patch_size[t] = np.median(all_patch_sizes)
         std_patch_size[t] = np.std(all_patch_sizes)
 
         # Save select outputs post-fire 
@@ -316,7 +317,9 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
     return {"output_times": output_times, 
             "output_slices": output_slices, 
             "burned_area_masks" : burned_area_masks,
+            "num_patches": num_patches,
             "avg_patch_size": avg_patch_size, 
+            "med_patch_size": med_patch_size,
             "std_patch_size": std_patch_size, 
             "biomass": total_biomass,
             "area_burned": area_burned_output, 
