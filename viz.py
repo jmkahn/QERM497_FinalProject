@@ -5,6 +5,10 @@ import numpy as np
 
 from scipy import ndimage
 
+theme_colors = {
+    "green": "#017f66"
+}
+
 def plot_slices_of_simulation(results_dict, title = "", plot_burn_masks=True):
     '''Params: 
         times: a list of time steps 

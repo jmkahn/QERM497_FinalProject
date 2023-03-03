@@ -324,3 +324,56 @@ def run_simulation(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_
             "biomass": total_biomass,
             "area_burned": area_burned_output, 
             "params_dict": params_dict}
+
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+def run_simulation_animate(m, L, t_steps, d, init_grass, init_tree, p_disp, p_prop, min_seed, r_grow, tree_carrying_capacity, neighborhood_carrying_capacity, max_ignite, output_times=[], rng=None):
+    
+    params_dict = initialize_params_dict(m=m, 
+                                            L=L, 
+                                            t_steps=t_steps, 
+                                            d=d, 
+                                            init_grass=init_grass, 
+                                            init_tree=init_tree, 
+                                            p_disp=p_disp, 
+                                    p_prop=p_prop,
+                                    min_seed=min_seed,
+                                    r_grow=r_grow, 
+                                    tree_carrying_capacity=tree_carrying_capacity,
+                                    neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
+                                    max_ignite=max_ignite, 
+                                    rand_seed=12345)
+
+
+    # First set up the figure, the axis, and the plot element we want to animate
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 8))
+
+    forest = initialize_forest(L=L, 
+                                d=d, 
+                                init_grass=init_grass, 
+                                init_tree=init_tree)
+
+    im = ax[0].imshow(forest, vmin=1, vmax=tree_carrying_capacity*1.2, alpha=(forest > 0).astype(float))
+    
+    t,biomass = [],[]
+
+    def animate_func(i):
+        global forest
+
+        forest = grow_season(forest, params_dict) 
+        forest, area_burned, indices_burned = fire_season(forest, params_dict)
+
+        t.append(i)
+        biomass.append(np.sum(forest))
+        ax[1].plot(t, biomass) 
+
+        im.set_array(forest)
+        im.set_alpha((forest > 0).astype(float))
+        return [ax]
+
+    anim = animation.FuncAnimation(
+                                fig, 
+                                animate_func, 
+                                frames = t_steps,
+                                interval = 200, # in ms
+                                )
