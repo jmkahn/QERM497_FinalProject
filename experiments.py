@@ -476,4 +476,4 @@ plt.scatter(ignition_probability, mean_biomass, color = "orange", label = "mean"
 plt.legend()
 plt.xlabel("ignition probability")
 plt.ylabel("mean biomass")
-plt.show()
+plt.savefig("outputs/ignition_prob_biomass.png")
