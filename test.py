@@ -97,48 +97,4 @@ p_ig_gmax = 0.02
 p_ig_tmax = 0.03
 results_dict = run_simulation(m=m, L=L, t_steps=t_steps, d=d, init_grass=init_grass, init_tree=init_tree, p_ig_gmax=p_ig_gmax,
                               p_ig_tmax=p_ig_tmax, r_spr_tmax=0.03, r_spr_gmax=0.05, r_cat_tmax=0.03, r_cat_gmax=0.07, output_times=[0, 10, 20, 30, 40, 50, 60])
-r_spr_tmax=0.03
-r_spr_gmax=0.05
-r_cat_tmax=0.03
-r_cat_gmax=0.07
-output_times = list(np.linspace(0, t_steps-1, 5, dtype=int))
-results_dict = run_simulation(m=m, L=L, t_steps=t_steps, d=d, p_gro_gmax=0.3, init_grass=init_grass, init_tree=init_tree, p_ig_gmax=p_ig_gmax, p_ig_tmax=p_ig_tmax, r_spr_tmax=r_spr_tmax, r_spr_gmax=r_spr_gmax, r_cat_tmax=r_cat_tmax, r_cat_gmax=r_cat_gmax, output_times=output_times)
 
-# %% 
-
-# %% 
-t_steps = 10
-m = 0.6
-L = 100 
-d = 6
-init_grass = 0.5
-init_tree = 0.5
-p_gro_gmax = 0.6
-p_ig_gmax = 0.02
-p_ig_tmax = 0.03
-r_spr_tmax=0.3
-r_spr_gmax=0.5
-r_cat_tmax=0.3
-r_cat_gmax=0.9
-output_times = list(np.linspace(0, t_steps-1, 5, dtype=int))
-
-num_params = 10
-steady_grass = np.zeros(num_params)
-steady_trees = np.zeros(num_params)
-steady_fire = np.zeros(num_params)
-m_vals = np.linspace(0, 1, num_params)
-for i in range(num_params): 
-    results_dict = run_simulation(m=m, L=L, t_steps=t_steps, d=d, p_gro_gmax = p_gro_gmax, init_grass=init_grass, init_tree=init_tree, p_ig_gmax=p_ig_gmax, p_ig_tmax=p_ig_tmax, r_spr_tmax=r_spr_tmax, r_spr_gmax=r_spr_gmax, r_cat_tmax=r_cat_tmax, r_cat_gmax=r_cat_gmax, output_times=output_times)
-    steady_grass[i] = results_dict['grass_count'][-1]
-    steady_trees[i] = results_dict['tree_count'][-1]
-    steady_fire[i] = results_dict['area_burned'][-1]
-
-#%% 
-plt.figure(figsize=(12, 6))
-plt.plot(range(num_params), steady_grass, color="yellow", label="Early Vegetation")
-plt.plot(range(num_params), steady_trees, color='green', label="Mature Vegetation")
-plt.plot(range(num_params), steady_fire, color='orange', label="Fire")
-plt.suptitle("Parameters Sweep of Moisture")
-plt.legend(fontsize="large")
-plt.xlabel("value of M")
-plt.ylabel("Units of Vegetation/Fire")
