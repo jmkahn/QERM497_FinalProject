@@ -110,21 +110,20 @@ def plot_results(results_dict, title, filename, burnout_time):
 #%%
 
 m = 0.5 # placeholder, not used. 
-L = 50
+L = 100
 time_steps = 500
 d = 4
 init_grass=0.2 
-init_tree=0.1
+init_tree=0.7
 p_disp=.05
 p_prop=0.1
 min_seed=2
-r_grow=0.8
+r_grow=0.6
 tree_carrying_capacity = 50
 neighborhood_carrying_capacity = tree_carrying_capacity*5
 max_ignite=0.001
 rand_seed = 1551
-
-
+output_slices=[452,453,454,455,456,457,458,459,460]
 
 # WESTSIDE
 rng = np.random.default_rng(rand_seed)
@@ -143,29 +142,24 @@ results_dict_westside = run_simulation(m=m,
         neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
         max_ignite=max_ignite,
         rng=rng,
-        output_times = [399,400,401,402,450])
+        output_times = output_slices)
 
 
+
+plot_results(results_dict=results_dict_westside, title="Westside", filename="westside_long", burnout_time=200)
+print("westside done!")
 # %%
-plot_results(results_dict=results_dict_westside, title="Westside", filename="westside", burnout_time=200)
 
-
-# %% 
 # EASTSIDE
-m = 0.5 # placeholder, not used. 
-L = 50
-time_steps = 500
-d = 4
 init_grass=0.2 
-init_tree=0.1
+init_tree=0.7
 p_disp=.05
 p_prop=0.1
 min_seed=2
-r_grow=0.8
+r_grow=0.6
 tree_carrying_capacity = 50
 neighborhood_carrying_capacity = tree_carrying_capacity*2.5
-max_ignite=0.1
-rand_seed = 1551
+max_ignite=0.05
 
 results_dict_eastside = run_simulation(m=m, 
         L=L, 
@@ -181,8 +175,8 @@ results_dict_eastside = run_simulation(m=m,
         neighborhood_carrying_capacity=neighborhood_carrying_capacity, 
         max_ignite=max_ignite,
         rng=rng, 
-        output_times = [399,400,401,402,450])
+        output_times = output_slices)
 
-# %%
+
 # PLOT RESULTS
-plot_results(results_dict=results_dict_eastside, title="Eastside", filename="eastside", burnout_time=200)
+plot_results(results_dict=results_dict_eastside, title="Eastside", filename="eastside_long", burnout_time=200)
